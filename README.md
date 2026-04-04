@@ -1,2 +1,0 @@
-# KoreanSniper.github.io
-Test
