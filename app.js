@@ -4,7 +4,7 @@ const stationList = Object.keys(stations).map(name => ({
     name,
     x: stations[name][0],
     y: stations[name][1],
-    region: stationRegions[name] || "기타"
+    region: stations[name][2]
 }));
 const stationMap = Object.fromEntries(stationList.map(station => [station.id, station]));
 
