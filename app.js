@@ -53,7 +53,6 @@ for (const line of lineCatalog) {
 }
 
 const OVERLAP_TOLERANCE = 0.01;
-const activeCategories = new Set(Object.keys(categoryLabels));
 const lineElements = [];
 const stationElements = [];
 const labelElements = [];
@@ -71,7 +70,6 @@ const viewport = document.getElementById("viewport"),
     endInput = document.getElementById("end"),
     stationOptions = document.getElementById("stationOptions"),
     lineOptions = document.getElementById("lineOptions"),
-    categoryFilters = document.getElementById("categoryFilters"),
     lineGroups = document.getElementById("lineGroups"),
     resultBox = document.getElementById("resultBox"),
     findRouteBtn = document.getElementById("findRouteBtn"),
@@ -229,7 +227,7 @@ function buildGraph() {
         graph[station.id] = [];
     });
     lines.forEach(line => {
-        if (line.planned || !activeCategories.has(line.category)) return;
+        if (line.planned) return;
         graph[line.from].push({ to: line.to, cost: 1 });
         graph[line.to].push({ to: line.from, cost: 1 });
     });
@@ -291,16 +289,9 @@ function setResult(message, emphasize = false) {
     resultBox.innerHTML = emphasize ? `<strong>${message}</strong>` : message;
 }
 
-function syncCategoryButtons() {
-    categoryFilters.querySelectorAll("[data-category]").forEach(button => {
-        button.classList.toggle("active", activeCategories.has(button.dataset.category));
-    });
-}
-
 function applyLineFocus() {
     if (!focusedLineName) return;
     lineElements.forEach(({ element, line }) => {
-        if (!activeCategories.has(line.category)) return;
         if (line.lineName === focusedLineName) {
             element.setAttribute("stroke-opacity", "1");
             element.setAttribute("stroke-width", "10");
@@ -336,28 +327,21 @@ function highlight(path) {
 }
 
 function getVisibleStationSet() {
-    const visibleStations = new Set();
-    lines.forEach(line => {
-        if (!activeCategories.has(line.category)) return;
-        visibleStations.add(line.from);
-        visibleStations.add(line.to);
-    });
-    return visibleStations;
+    return new Set(stationList.map(s => s.id));
 }
 
 function updateVisibility() {
     const visibleStations = getVisibleStationSet();
     const pathStations = highlightedPath ? new Set(highlightedPath) : null;
     lineElements.forEach(({ element, line }) => {
-        element.style.display = activeCategories.has(line.category) ? "" : "none";
+        element.style.display = "";
         if (highlightedPath) {
             const isOnPath = element.getAttribute("stroke") === "#ef4444";
             element.setAttribute("stroke-opacity", isOnPath ? "1" : "0.2");
         }
     });
-    badgeElements.forEach(({ element, category, stationName, lineName }) => {
-        const visible = activeCategories.has(category) &&
-            (!isDenseCoreStation(stationName) || scale >= 1.45 || stationName === highlightedStation || focusedLineName === lineName);
+    badgeElements.forEach(({ element, stationName, lineName }) => {
+        const visible = (!isDenseCoreStation(stationName) || scale >= 1.45 || stationName === highlightedStation || focusedLineName === lineName);
         element.style.display = visible ? "" : "none";
         let opacity = "1";
         if (focusedLineName && lineName !== focusedLineName) opacity = "0.28";
@@ -421,8 +405,6 @@ function focusOnLine(name) {
     }
     focusedLineName = name;
     highlightedStation = null;
-    activeCategories.add(line.category);
-    syncCategoryButtons();
     updateVisibility();
     clearHighlights();
     focusOnStations(line.stations);
@@ -448,7 +430,7 @@ function findRoute() {
     lineSearchInput.value = "";
     const path = buildRoutePath(routeNames);
     if (!path) {
-        setResult("현재 선택된 분류 안에서 연결 경로를 찾지 못했습니다. 필터를 넓히거나 역 이름을 다시 확인해 주세요.", true);
+        setResult("연결 경로를 찾지 못했습니다. 개통 예정 구간은 경로에서 제외됩니다. 역 이름을 다시 확인해 주세요.", true);
         clearHighlights();
         return;
     }
@@ -479,34 +461,113 @@ function renderStationOptions() {
         .map(station => `<option value="${station.name}"></option>`).join("");
 }
 
+/**
+ * 역 이름을 기반으로 지역(Region)을 판별하는 함수
+ */
+/**
+ * 역 이름을 기반으로 13개 세부 지역을 판별하는 함수
+ */
+/**
+ * 역 ID를 받아 해당 역의 데이터에 정의된 지역 정보를 반환
+ */
+function getRegionById(stationId) {
+    // stations 데이터에서 [x, y, regionName] 형식을 가져옴
+    const stationData = stations[stationId];
+    const regionName = stationData ? stationData[2] : "기타";
+
+    // 지역 명칭에 따른 속성 매핑
+    const regionMap = {
+        "중앙": { id: "central", label: "중앙특별시", color: "rgba(255, 255, 255, 0.1)" },
+        "유곽": { id: "yugwak", label: "유곽광역시", color: "rgba(132, 204, 22, 0.15)" },
+        "외곽": { id: "outer", label: "외곽군", color: "rgba(100, 116, 139, 0.15)" },
+        "남부도서관": { id: "library", label: "남부도서관", color: "rgba(34, 197, 94, 0.15)" },
+        "폭서": { id: "pogseo", label: "폭서군", color: "rgba(251, 146, 60, 0.15)" },
+        "서산": { id: "seosan", label: "서산시", color: "rgba(234, 179, 8, 0.15)" },
+        "화북": { id: "hwabuk", label: "화북군", color: "rgba(192, 132, 252, 0.15)" },
+        "팔시티": { id: "palcity", label: "팔시티", color: "rgba(56, 189, 248, 0.15)" },
+        "북동": { id: "northeast", label: "북동시", color: "rgba(168, 85, 247, 0.15)" },
+        "동영": { id: "dongyeong", label: "동영시", color: "rgba(244, 63, 94, 0.15)" },
+        "경선": { id: "gyeongseon", label: "경선군", color: "rgba(20, 184, 166, 0.15)" },
+        "경인": { id: "gyeongin", label: "경인군", color: "rgba(1, 66, 97, 0.15)" },
+        "도서": { id: "doseo", label: "도서광역시", color: "rgba(34, 197, 94, 0.15)" },
+        "북시티": { id: "northcity", label: "북시티", color: "rgba(39, 102, 2, 0.15)" }
+    };
+
+    return regionMap[regionName] || { id: "etc", label: "도시 확장구역", color: "rgba(148, 163, 184, 0.05)" };
+}
+
+/**
+ * 보로노이 다이어그램을 생성하고 같은 지역끼리 경계를 합쳐 출력
+ */
+
+function renderRegionalBoundaries() {
+    // 1. 역 좌표 추출 및 보로노이 계산
+    const points = stationList.map(s => [s.x, s.y]);
+    const delaunay = d3.Delaunay.from(points);
+    // 지도의 실제 범위를 고려하여 넉넉하게 설정
+    const voronoi = delaunay.voronoi([-2500, -2000, 3000, 3000]); 
+
+    const regionGroup = document.getElementById("region-boundaries") || document.createElementNS("http://www.w3.org/2000/svg", "g");
+    regionGroup.id = "region-boundaries";
+    
+    // 레이어 순서: 노선도(viewport)의 맨 첫 번째 자식으로 넣어 배경이 되게 함
+    if (!regionGroup.parentNode) {
+        viewport.insertBefore(regionGroup, viewport.firstChild);
+    }
+
+    const regionPaths = {};
+
+    // 2. 각 역의 보로노이 셀을 지역별로 그룹화
+    stationList.forEach((station, i) => {
+        const region = getRegionById(station.id); 
+        const cellPath = voronoi.renderCell(i);
+        
+        if (!regionPaths[region.id]) {
+            regionPaths[region.id] = { 
+                d: "", 
+                color: region.color, 
+                label: region.label // 툴팁 표시를 위해 label 저장
+            };
+        }
+        // 셀들의 경로 데이터를 하나로 합침
+        regionPaths[region.id].d += " " + cellPath;
+    });
+
+    // 기존 렌더링 결과 초기화
+    regionGroup.innerHTML = "";
+
+    // 3. 합쳐진 지역별 폴리곤 생성
+    Object.entries(regionPaths).forEach(([id, data]) => {
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathEl.setAttribute("d", data.d);
+        pathEl.setAttribute("fill", data.color);
+        pathEl.setAttribute("stroke", "rgba(255,255,255,0.08)"); // 구역 간 경계선
+        pathEl.setAttribute("stroke-width", "2");
+        pathEl.setAttribute("class", "region-path");
+        
+        // 마우스 호버 이벤트
+        pathEl.addEventListener("mouseenter", () => {
+            // 드래그 중이 아닐 때만 하단 결과창에 지역명 표시
+            if (typeof drag !== 'undefined' && !drag) {
+                setResult(`현재 구역: <strong>${data.label}</strong>`);
+            }
+        });
+
+        regionGroup.appendChild(pathEl);
+    });
+}
+
+
 function renderLineOptions() {
     lineOptions.innerHTML = lineCatalog.slice().sort((a, b) => a.lineName.localeCompare(b.lineName, "ko"))
         .map(line => `<option value="${line.lineName}"></option>`).join("");
 }
 
-function renderCategoryFilters() {
-    categoryFilters.innerHTML = availableCategoryEntries.map(([key, label]) =>
-        `<button class="chip active" type="button" data-category="${key}">${label}</button>`).join("");
-    categoryFilters.querySelectorAll("[data-category]").forEach(button => {
-        button.addEventListener("click", () => {
-            const category = button.dataset.category;
-            if (activeCategories.has(category)) activeCategories.delete(category);
-            else activeCategories.add(category);
-            button.classList.toggle("active", activeCategories.has(category));
-            clearHighlights();
-            updateVisibility();
-            updateLineGroupState();
-        });
-    });
-}
-
 function updateLineGroupState() {
     lineGroups.querySelectorAll(".line-pill[data-line]").forEach(pill => {
-        const category = pill.dataset.category;
         const lineName = pill.dataset.line;
-        const inactive = !activeCategories.has(category);
         const mismatched = focusedLineName && lineName !== focusedLineName;
-        pill.classList.toggle("dimmed", inactive || mismatched);
+        pill.classList.toggle("dimmed", mismatched);
         pill.classList.toggle("active", focusedLineName === lineName);
     });
 }
@@ -528,6 +589,33 @@ function update() {
     viewport.setAttribute("transform", `translate(${ox},${oy}) scale(${scale})`);
 }
 
+function buildRegionEllipseParams() {
+    const byRegion = {};
+    stationList.forEach(s => {
+        if (!byRegion[s.region]) byRegion[s.region] = [];
+        byRegion[s.region].push(s);
+    });
+    const pad = 72;
+    const minR = 128;
+    return Object.keys(byRegion).sort((a, b) => a.localeCompare(b, "ko")).map(region => {
+        const sts = byRegion[region];
+        const xs = sts.map(s => s.x), ys = sts.map(s => s.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        let rx = (maxX - minX) / 2 + pad;
+        let ry = (maxY - minY) / 2 + pad;
+        rx = Math.max(rx, minR);
+        ry = Math.max(ry, minR);
+        return {
+            region,
+            cx: (minX + maxX) / 2,
+            cy: (minY + maxY) / 2,
+            rx,
+            ry
+        };
+    });
+}
+
 // Rendering and initialization
 const renderedLines = lines.map(createLineGeometry),
     overlapGroups = renderedLines.map(() => []);
@@ -539,6 +627,26 @@ for (let i = 0; i < renderedLines.length; i++) {
     overlapGroups[i].sort((a, b) => renderedLines[a].lineName !== renderedLines[b].lineName ?
         renderedLines[a].lineName.localeCompare(renderedLines[b].lineName, "ko") : a - b);
 }
+
+const regionOutlineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+regionOutlineGroup.setAttribute("class", "region-outlines");
+regionOutlineGroup.setAttribute("visibility", "hidden");
+regionOutlineGroup.style.pointerEvents = "none";
+buildRegionEllipseParams().forEach(({ cx, cy, rx, ry }) => {
+    const ell = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    ell.setAttribute("cx", String(cx));
+    ell.setAttribute("cy", String(cy));
+    ell.setAttribute("rx", String(rx));
+    ell.setAttribute("ry", String(ry));
+    ell.setAttribute("fill", "none");
+    ell.setAttribute("stroke", "#64748b");
+    ell.setAttribute("stroke-width", "2.5");
+    ell.setAttribute("stroke-opacity", "0.88");
+    ell.setAttribute("class", "region-outline");
+    regionOutlineGroup.appendChild(ell);
+});
+viewport.appendChild(regionOutlineGroup);
+
 renderedLines.forEach((line, index) => {
     const overlapGroup = overlapGroups[index],
         overlapIndex = overlapGroup.indexOf(index),
@@ -601,6 +709,13 @@ stationList.forEach(station => {
 });
 
 // Event listeners
+const regionOutlinesToggle = document.getElementById("regionOutlinesToggle");
+if (regionOutlinesToggle) {
+    regionOutlinesToggle.addEventListener("change", () => {
+        regionOutlineGroup.setAttribute("visibility", regionOutlinesToggle.checked ? "visible" : "hidden");
+    });
+}
+
 findRouteBtn.addEventListener("click", findRoute);
 resetViewBtn.addEventListener("click", () => {
     startInput.value = "";
@@ -714,10 +829,15 @@ svg.addEventListener("touchend", event => {
 });
 
 // Initial render
+
+
+
 renderStationOptions();
 renderLineOptions();
-renderCategoryFilters();
 renderLineGroups();
+
+// 초기 실행 루틴에 추가
+renderRegionalBoundaries();
 updateVisibility();
 clearHighlights();
 updateLineGroupState();
