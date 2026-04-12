@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>지하철 노선도</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="app"><aside class="sidebar"><section class="brand"><h1>PAL Rail Map</h1><p>고속열차, 일반열차, 지하철, 경전철, 개통예정 노선을 한 화면에서 나눠 보고 검색할 수 있는 통합 노선도입니다.</p></section><section class="panel"><h2>경로 검색</h2><div class="field"><label for="stationSearch">역 빠른 검색</label><input id="stationSearch" list="stationOptions" placeholder="역 이름 입력 후 위치 찾기"></div><div class="field"><label for="lineSearch">노선 빠른 검색</label><input id="lineSearch" list="lineOptions" placeholder="노선 이름 입력 후 강조"></div><div class="field"><label for="start">출발역</label><input id="start" list="stationOptions" placeholder="출발역"></div><div class="field"><label for="via">경유역</label><input id="via" list="stationOptions" placeholder="쉼표로 여러 역 입력"></div><div class="field"><label for="end">도착역</label><input id="end" list="stationOptions" placeholder="도착역"></div><div class="actions"><button class="btn btn-primary" id="findRouteBtn" type="button">경로 찾기</button><button class="btn btn-secondary" id="resetViewBtn" type="button">초기화</button></div></section><section class="panel"><h2>운영 현황</h2><div class="line-groups" id="lineGroups"></div></section><section class="panel"><h2>검색 결과</h2><div class="result-box" id="resultBox">출발역과 도착역을 입력하면 최단 경로가 여기에 표시됩니다.</div></section></aside><main class="map-shell"><div class="map-topbar"><div class="map-card"><strong>지도 사용법</strong><span>마우스로 드래그하고 휠로 확대할 수 있습니다. 오른쪽에서 지역 구분 타원을 켜면 역이 묶인 구역이 회색 타원으로 표시됩니다.</span></div><div class="legend"><strong>개통예정 노선</strong><div>10~12호선<br>계획은 예고 없이 수정될수 있습니다.</div></div></div><svg id="map"><g id="viewport"></g></svg><datalist id="stationOptions"></datalist><datalist id="lineOptions"></datalist></main></div>
+<script src="./subway-data.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

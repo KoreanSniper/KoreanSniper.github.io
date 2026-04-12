@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>프로필</title>
+<link rel="stylesheet" href="./css/discord.css">
+</head>
+
+<body class="app">
+
+<div class="profile-container">
+
+  <div class="profile-card">
+
+    <div class="avatar">👤</div>
+
+    <h1 id="username">로딩중...</h1>
+    <p id="email">-</p>
+
+    <div class="profile-info">
+      <div class="info-box">
+        <h3>상태</h3>
+        <p id="status">온라인</p>
+      </div>
+
+      <div class="info-box">
+        <h3>가입일</h3>
+        <p id="created">-</p>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <button onclick="goHome()">🏠 홈</button>
+      <button onclick="logout()">🚪 로그아웃</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="./js/profile.js"></script>
+</body>
+</html>

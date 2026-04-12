@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Post</title>
+  <link rel="stylesheet" href="./css/discord.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- 🔥 게시글 -->
+  <div class="card post">
+    <h1 id="title">로딩중...</h1>
+    <p id="content"></p>
+
+    <div class="actions">
+      👍 <span id="likes">0</span>
+      👎 <span id="dislikes">0</span>
+    </div>
+
+    <div class="btns">
+
+      <button onclick="history.back()">← 뒤로가기</button>
+
+      <button id="likeBtn">좋아요</button>
+      <button id="dislikeBtn">싫어요</button>
+      <button id="reportBtn">신고</button>
+      <button id="deleteBtn">삭제</button>
+
+    </div>
+  </div>
+
+  <!-- 💬 댓글 입력 -->
+  <div class="card comment-box">
+    <textarea id="comment" placeholder="댓글 작성..."></textarea>
+    <button id="commentBtn">댓글 작성</button>
+  </div>
+
+  <!-- 💬 댓글 리스트 -->
+  <div id="comments"></div>
+
+</div>
+
+<script type="module" src="./js/post.js"></script>
+
+</body>
+</html>

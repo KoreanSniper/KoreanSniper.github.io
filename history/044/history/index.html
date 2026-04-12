@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History Browser</title>
+
+<link rel="stylesheet" href="../style.css">
+
+<style>
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #0b1220;
+    color: white;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 24px;
+}
+
+h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.sub {
+    opacity: 0.7;
+    margin-bottom: 20px;
+}
+
+.card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 14px 16px;
+    margin-bottom: 10px;
+
+    border-radius: 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+
+    text-decoration: none;
+    color: white;
+
+    transition: 0.15s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.08);
+}
+
+.hash {
+    font-size: 12px;
+    opacity: 0.6;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+    <h1>📜 History Browser</h1>
+    <div class="sub">버전 목록</div>
+    <button class="back" onclick="window.history.back();">←뒤로가기</button>
+
+    <div id="list"></div>
+</div>
+
+<script>
+const commitsRaw = `
+초기 커밋
+index.html 초기 HTML 구조 추가
+지하철 지도 웹 앱 추가
+지하철 지도 스타일 추가
+지하철 지도 데이터 추가
+지하철 지도 앱 로직 추가
+사이트 루트에 지하철 지도 배포
+사이트 루트에 지하철 지도 데이터 배포
+사이트 루트에 지하철 지도 앱 로직 배포
+모바일 터치 지원 지하철 지도 추가
+모바일 터치 지원 지하철 지도 스타일 추가
+모바일 터치 지원 지하철 지도 데이터 추가
+모바일 터치 지원 지하철 지도 앱 로직 추가
+koreansniper.github.io/Subway-map-touch -> koreansniper.github.io, 9호선 완공
+9호선 계획 버그 수정
+경로 검색이 안 되는 버그 수정
+경로 강조 기능 추가, 노선 예정 안내에 9호선이 남아있던 버그 수정
+사이드바 버그 수정
+10, 12호선 계획 추가
+10, 12호선 계획 백지화 및 10~12호선 계획 추가, 팔경선 계획 추가
+팔경선 개통
+역 위치 수정
+노선 이름 수정
+1차 행정구역 업데이트
+2차 행정구역 업데이트
+10호선 개통
+11호선 개통
+WDX 노선 수정
+사이트 구조 변경
+URL 구조를 깔끔하게 변경
+버그 수정
+사이트 개선
+WDX 개통
+역 이름 업데이트
+서산순환산 계획 추가
+1차 역 버그 수정
+2차 역 버그 수정
+3차 역 버그 수정
+4차 역 버그 수정
+5차 역 버그 수정
+역 버그 수정 완료
+노선 추가 계획 수립, WDX 폐선 예정
+UI 업데이트
+커뮤니티 업데이트
+`;
+
+let commits = commitsRaw
+    .trim()
+    .split("\n")
+    .filter(line => line.trim().length > 0)
+    .map((line, idx) => {
+        return {
+            msg: line.trim(),
+            hash: "",
+            index: idx + 1
+        };
+    })
+    .reverse(); // 오래된 → 최신
+
+const list = document.getElementById("list");
+
+commits.forEach(c => {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = `${String(c.index).padStart(3,"0")}/`;
+
+    a.innerHTML = `
+        <div>
+            <div><b>v${String(c.index).padStart(3,"0")}</b> - ${c.msg}</div>
+            <div class="hash">${c.hash}</div>
+        </div>
+        <div>→</div>
+    `;
+
+    list.appendChild(a);
+});
+</script>
+
+</body>
+</html>

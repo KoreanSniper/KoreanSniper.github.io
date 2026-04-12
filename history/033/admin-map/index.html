@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockRail 행정구역 지도</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <section class="brand">
+            <h1>BlockRail 행정구역</h1>
+            <p>노선도 데이터를 기반으로 지역 경계를 시각화한 지도입니다. 각 지역의 색상과 이름을 확인할 수 있습니다.</p>
+        </section>
+        <section class="panel">
+            <h2>지역 목록</h2>
+            <div class="filter-list" id="regionLegend"></div>
+        </section>
+        <section class="panel">
+            <h2>설명</h2>
+            <div class="result-box">영역을 마우스로 올리면 강조되고, 각 구역의 이름을 확인할 수 있습니다.</div>
+        </section>
+        <section class="panel">
+            <h2>이동</h2>
+            <div class="filter-list">
+                <a class="btn btn-secondary" href="../train-map">노선도로 이동</a>
+                <a class="btn btn-secondary" href="../lobby.html">로비 소개</a>
+            </div>
+        </section>
+    </aside>
+    <main class="map-shell">
+        <div class="map-topbar">
+            <div class="map-card"><strong>행정구역 지도</strong><span>역 위치와 지역 경계를 함께 표시합니다.</span></div>
+            <div class="map-toggle">
+                <button class="btn btn-secondary" id="zoomIn" type="button">+</button>
+                <button class="btn btn-secondary" id="zoomOut" type="button">-</button>
+                <button class="btn btn-secondary" id="resetViewBtn" type="button">초기화</button>
+            </div>
+            <div class="legend"><strong>지역 색상</strong><div>각 지역은 역 정보를 기반으로 자동 생성된 경계입니다.</div></div>
+        </div>
+        <svg id="map"><g id="viewport"></g></svg>
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<script src="../subway-data.js"></script>
+<script src="./admin-map.js"></script>
+</body>
+</html>

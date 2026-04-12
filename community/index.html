@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>커뮤니티</title>
+<link rel="stylesheet" href="./css/discord.css">
+</head>
+
+<body class="app">
+
+<div class="layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <div class="auth-box">
+
+    <button id="back" onclick="back()">←뒤로가기</button>
+    <input id="email" placeholder="이메일">
+    <input id="password" type="password" placeholder="비밀번호">
+
+    <button id="signupBtn" onclick="signup()">회원가입</button>
+
+    <!-- 로그인 / 로그아웃 토글 -->
+    <button id="loginBtn" onclick="login()">로그인</button>
+    <button id="logoutBtn" onclick="logout()">로그아웃</button>
+
+    <!-- 프로필 버튼 -->
+    <button id="profileBtn" onclick="goProfile()">👤 프로필</button>
+
+    <button id="writeBtn" onclick="goWrite()">✏️ 글쓰기</button>
+
+</div>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <div class="header">
+      <h1>📌 게시글</h1>
+      <p>실시간 커뮤니티 피드</p>
+    </div>
+
+    <div id="posts" class="post-list"></div>
+
+  </div>
+
+</div>
+
+<script type="module" src="./js/auth.js"></script>
+<script type="module" src="./js/main.js"></script>
+
+</body>
+</html>
