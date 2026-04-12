@@ -74,6 +74,7 @@ function renderComments(comments) {
 
     div.querySelector(".likeC").onclick = () => likeComment(c.id);
     div.querySelector(".dislikeC").onclick = () => dislikeComment(c.id);
+    div.querySelector(".reportC").onclick = () => reportComment(c.id);
     div.querySelector(".deleteC").onclick = () => deleteComment(c.id);
 
     box.appendChild(div);
