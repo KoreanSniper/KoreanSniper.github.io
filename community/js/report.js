@@ -9,6 +9,8 @@ export async function reportPost(postId) {
       alert("로그인 필요");
       return;
     }
+    alert("개발중")
+    return;
 
     const reason = prompt("신고 사유");
     if (!reason) return;
