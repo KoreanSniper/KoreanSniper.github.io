@@ -68,7 +68,7 @@ function renderComments(comments) {
 
       <button class="likeC">👍</button>
       <button class="dislikeC">👎</button>
-      <!-- <button class="reportC">🚨 신고</button>-->
+      <button class="reportC">🚨 신고</button>
       <button class="deleteC">🗑 삭제</button>
     `;
 
@@ -124,4 +124,4 @@ window.addEventListener("DOMContentLoaded", () => {
   if (reportBtn) reportBtn.onclick = () => reportPost(postId);
   if (deleteBtn) deleteBtn.onclick = () => deletePost(postId);
   if (commentBtn) commentBtn.onclick = () => addComment(postId);
-});
+}); 
