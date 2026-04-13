@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { escapeHTML } from "./util.js"
 import {
   collection,
   getDocs,
@@ -33,8 +34,8 @@ async function loadPosts() {
       };
 
       post.innerHTML = `
-      <h1>${data.title}</h1>
-      <p>${data.content}</p>
+      <h1>${escapeHTML(data.title)}</h1>
+      <p>${escapeHTML(data.content)}</p>
       `;
 
       postsDiv.appendChild(post);
