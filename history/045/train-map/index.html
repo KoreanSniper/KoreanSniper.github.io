@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlockRail Rail Map</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+<div class="app">
+
+    <!-- 사이드바 -->
+    <aside class="sidebar">
+        <section class="brand">
+            <h1>BlockRail Rail Map</h1>
+            <p>고속열차, 일반열차, 지하철, 경전철, 개통예정 노선을 한 화면에서 나눠 보고 검색할 수 있는 통합 노선도입니다.</p>
+        </section>
+
+        <section class="panel">
+            <h2>경로 검색</h2>
+            <div class="field">
+                <label for="stationSearch">역 빠른 검색</label>
+                <input id="stationSearch" list="stationOptions" placeholder="역 이름 입력 후 위치 찾기">
+            </div>
+            <div class="field">
+                <label for="lineSearch">노선 빠른 검색</label>
+                <input id="lineSearch" list="lineOptions" placeholder="노선 이름 입력 후 강조">
+            </div>
+            <div class="field">
+                <label for="start">출발역</label>
+                <input id="start" list="stationOptions" placeholder="출발역">
+            </div>
+            <div class="field">
+                <label for="via">경유역</label>
+                <input id="via" list="stationOptions" placeholder="쉼표로 여러 역 입력">
+            </div>
+            <div class="field">
+                <label for="end">도착역</label>
+                <input id="end" list="stationOptions" placeholder="도착역">
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" id="findRouteBtn">경로 찾기</button>
+                <button class="btn btn-secondary" id="resetViewBtn">초기화</button>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>운영 현황</h2>
+            <div class="filter-list" id="categoryFilters"></div>
+            <div class="line-groups" id="lineGroups"></div>
+        </section>
+
+        <section class="panel">
+            <h2>검색 결과</h2>
+            <div class="result-box" id="resultBox">
+                출발역과 도착역을 입력하면 최단 경로가 여기에 표시됩니다.
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>지역 정보</h2>
+            <div class="result-box" id="regionBox">
+                마우스를 올리면 구역 이름이 표시됩니다.
+            </div>
+        </section>
+        <section class="panel">
+            <h2>이동</h2>
+            <div class="filter-list">
+                <a class="btn btn-secondary" href="../admin-map/">행정구역으로 이동</a>
+                <a class="btn btn-secondary" href="../lobby.html">로비 소개</a>
+                <a class="btn btn-secondary" href="../history/">변경 이력</a>
+                <a class="btn btn-secondary" href="../community/">커뮤니티</a>
+                <a class="btn btn-secondary" href="https://yomulttag.github.io/dongyeong.bus">버스노선도</a>
+            </div>
+        </section>
+    </aside>
+
+    <!-- 지도 영역 -->
+    <main class="map-shell">
+
+        <!-- 상단 UI -->
+        <div class="map-topbar">
+            <div class="map-card">
+                <strong>지도 사용법</strong>
+                <span>마우스로 드래그하고 휠로 확대할 수 있습니다.</span>
+            </div>
+
+            <div class="legend">
+                <strong>개통예정 노선</strong>
+                <ul class="legend-list">
+                    <li>12호선</li>
+                    <li>서산순환선</li>
+                    <li>서산 1호선</li>
+                    <li>서산 2호선</li>
+                    <li>서산 3호선</li>
+                    <li>경선 1호선</li>
+                    <li>경인 1호선</li>
+                    <li>북시티 2호선</li>
+                    <li>동영 3호선</li>
+                </ul>
+
+                <strong>폐선예정 노선</strong>
+                <ul class="legend-list">
+                    <li>WDX</li>
+                </ul>
+
+                <div class="legend-note">
+                    계획은 예고 없이 수정될 수 있습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- 지도 SVG (여기 안에 있어야 함) -->
+        <svg id="map">
+            <g id="viewport"></g>
+        </svg>
+
+        <!-- datalist -->
+        <datalist id="stationOptions"></datalist>
+        <datalist id="lineOptions"></datalist>
+
+    </main>
+
+</div>
+
+<script src="../subway-data.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

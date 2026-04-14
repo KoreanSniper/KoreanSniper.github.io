@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>글 수정</title>
+<link rel="stylesheet" href="./css/discord.css">
+</head>
+
+<body class="app">
+
+<div class="write-container">
+
+  <div class="write-card">
+
+    <h1>✏️ 글 수정</h1>
+
+    <input id="title" placeholder="제목 입력">
+    
+    <textarea id="content" placeholder="내용을 입력하세요..."></textarea>
+
+    <div class="write-actions">
+      <button onclick="updatePost()">💾 저장</button>
+      <button onclick="goBack()">← 취소</button>
+    </div>
+
+    <p id="status"></p>
+
+  </div>
+
+</div>
+
+<script type="module" src="./js/edit.js"></script>
+
+</body>
+</html>
