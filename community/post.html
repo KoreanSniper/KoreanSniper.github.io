@@ -13,6 +13,12 @@
   <!-- 🔥 게시글 -->
   <div class="card post">
     <h1 id="title">로딩중...</h1>
+
+    <!-- 작성자 -->
+    <p style="color:#949ba4; font-size:13px;">
+      작성자: <span id="author">로딩중...</span>
+    </p>
+
     <p id="content"></p>
 
     <div class="actions">
@@ -22,11 +28,15 @@
 
     <div class="btns">
 
-      <button onclick="history.back()">← 뒤로가기</button>
+      <button onclick="location.href = './index.html'">← 뒤로가기</button>
 
       <button id="likeBtn">좋아요</button>
       <button id="dislikeBtn">싫어요</button>
       <button id="reportBtn">신고</button>
+
+      <!-- 🔥 수정 버튼 -->
+      <button id="editBtn" style="display:none;">✏️ 수정</button>
+
       <button id="deleteBtn">삭제</button>
 
     </div>

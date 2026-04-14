@@ -6,21 +6,24 @@
 <link rel="stylesheet" href="./css/discord.css">
 </head>
 
-<body class="app">
+<body>
 
 <div class="profile-container">
 
   <div class="profile-card">
 
+    <!-- 아바타 -->
     <div class="avatar">👤</div>
 
+    <!-- 유저 정보 -->
     <h1 id="username">로딩중...</h1>
     <p id="email">-</p>
 
+    <!-- 상태 / 가입일 -->
     <div class="profile-info">
       <div class="info-box">
         <h3>상태</h3>
-        <p id="status">온라인</p>
+        <p id="status">-</p>
       </div>
 
       <div class="info-box">
@@ -29,9 +32,67 @@
       </div>
     </div>
 
+    <!-- 확장 정보 -->
+    <div class="profile-info">
+      <div class="info-box">
+        <h3>ID</h3>
+        <p id="id">-</p>
+      </div>
+
+      <div class="info-box">
+        <h3>게시글</h3>
+        <p id="posts">0</p>
+      </div>
+    </div>
+
+    <!-- 버튼 -->
     <div class="profile-actions">
       <button onclick="goHome()">🏠 홈</button>
       <button onclick="logout()">🚪 로그아웃</button>
+    </div>
+
+    <div class="profile-actions">
+      <button onclick="editProfile()">✏️ 수정</button>
+      <button onclick="viewMyPosts()">📄 내 글</button>
+    </div>
+
+    <!-- 🔥 유저 게시글 -->
+    <div class="main" style="max-width:600px; margin:20px auto;">
+      <h2 style="color:white;">📄 작성한 글</h2>
+      <div id="userPosts" class="post-list"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- 🔥 프로필 수정 모달 -->
+<div id="editModal" style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+">
+
+  <div style="
+  background:#2b2d31;
+  padding:20px;
+  border-radius:10px;
+  width:300px;
+  margin:120px auto;
+  ">
+
+    <h2>프로필 수정</h2>
+
+    <input id="editName" placeholder="닉네임">
+    <input id="editStatus" placeholder="상태 메시지">
+
+    <div style="margin-top:10px;">
+      <button onclick="saveProfile()">💾 저장</button>
+      <button onclick="closeModal()">❌ 취소</button>
     </div>
 
   </div>
@@ -39,5 +100,20 @@
 </div>
 
 <script type="module" src="./js/profile.js"></script>
+
+<script>
+function editProfile() {
+  document.getElementById("editModal").style.display = "block";
+}
+
+function closeModal() {
+  document.getElementById("editModal").style.display = "none";
+}
+
+function viewMyPosts() {
+  location.href = "./my-posts.html";
+}
+</script>
+
 </body>
 </html>

@@ -1,9 +1,15 @@
-import { db } from "./firebase.js";
-import { onSnapshot,doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { db, auth } from "./firebase.js";
+import {
+  onSnapshot,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 import { listenComments, addComment } from "./comment.js";
 import { likeComment, dislikeComment } from "./commentlike.js";
 import { reportComment } from "./reportcomment.js";
 import { deleteComment } from "./deletecomment.js";
+
 import { likePost, dislikePost } from "./like.js";
 import { reportPost } from "./report.js";
 import { deletePost } from "./delete.js";
@@ -19,6 +25,32 @@ if (!postId) {
 }
 
 // =====================
+// 👤 유저 캐시 (성능 최적화)
+// =====================
+const userCache = {};
+
+async function getUsername(uid) {
+  if (!uid) return "익명";
+
+  // 캐시 있으면 바로 반환
+  if (userCache[uid]) return userCache[uid];
+
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+
+    if (snap.exists()) {
+      const name = snap.data().username || "사용자";
+      userCache[uid] = name;
+      return name;
+    }
+  } catch (e) {
+    console.error("USER LOAD ERROR:", e);
+  }
+
+  return "익명";
+}
+
+// =====================
 // 📌 게시글 로딩
 // =====================
 async function loadPost() {
@@ -26,18 +58,30 @@ async function loadPost() {
     const snap = await getDoc(doc(db, "posts", postId));
 
     if (!snap.exists()) {
-      const t = document.getElementById("title");
-      if (t) t.innerText = "없는 글";
+      document.getElementById("title").innerText = "없는 글";
       return;
     }
 
     const data = snap.data();
 
-    const title = document.getElementById("title");
-    const content = document.getElementById("content");
+    document.getElementById("title").innerText = data.title || "";
+    document.getElementById("content").innerText = data.content || "";
 
-    if (title) title.innerText = data.title || "";
-    if (content) content.innerText = data.content || "";
+    // 🔥 작성자 이름 가져오기
+    const username = await getUsername(data.uid);
+    const authorEl = document.getElementById("author");
+    authorEl.innerText = username;
+    authorEl.style.cursor = "pointer";
+
+    authorEl.onclick = () => {
+      location.href = `profile.html?id=${data.uid}`;
+    };
+
+    // 🔥 본인 글이면 수정 버튼 표시
+    const user = auth.currentUser;
+    if (user && user.uid === data.uid) {
+      document.getElementById("editBtn").style.display = "inline-block";
+    }
 
   } catch (e) {
     console.error("POST LOAD ERROR:", e);
@@ -47,20 +91,22 @@ async function loadPost() {
 loadPost();
 
 // =====================
-// 💬 댓글 렌더 (안정 버전)
+// 💬 댓글 렌더 (닉네임 적용)
 // =====================
-function renderComments(comments) {
+async function renderComments(comments) {
   const box = document.getElementById("comments");
   if (!box) return;
 
   box.innerHTML = "";
 
-  comments.forEach(c => {
+  for (const c of comments) {
     const div = document.createElement("div");
     div.className = "card";
 
+    const username = await getUsername(c.uid);
+
     div.innerHTML = `
-      <b>${c.uid || "익명"}</b>
+      <b class="userLink" data-uid="${c.uid}">${username}</b>
       <p>${c.content || ""}</p>
 
       👍 ${c.likes || 0}
@@ -70,18 +116,23 @@ function renderComments(comments) {
       <button class="dislikeC">👎</button>
       <button class="reportC">🚨 신고</button>
       <button class="deleteC">🗑 삭제</button>
-    `;
 
+    `;
+    div.querySelector(".userLink").onclick = () => {
+      location.href = `profile.html?id=${c.uid}`;
+    };
     div.querySelector(".likeC").onclick = () => likeComment(c.id);
     div.querySelector(".dislikeC").onclick = () => dislikeComment(c.id);
     div.querySelector(".reportC").onclick = () => reportComment(c.id);
     div.querySelector(".deleteC").onclick = () => deleteComment(c.id);
 
     box.appendChild(div);
-  });
+  }
 }
 
-
+// =====================
+// 🔥 좋아요 실시간 반영
+// =====================
 function listenPost(postId) {
   const ref = doc(db, "posts", postId);
 
@@ -90,23 +141,20 @@ function listenPost(postId) {
 
     const data = snap.data();
 
-    const likes = document.getElementById("likes");
-    const dislikes = document.getElementById("dislikes");
-
-    if (likes) likes.innerText = data.likes || 0;
-    if (dislikes) dislikes.innerText = data.dislikes || 0;
+    document.getElementById("likes").innerText = data.likes || 0;
+    document.getElementById("dislikes").innerText = data.dislikes || 0;
   });
 }
 
-// 실행
 listenPost(postId);
+
 // =====================
-// 🔥 댓글 실시간 (중복 방지 중요)
+// 🔥 댓글 실시간
 // =====================
 listenComments(postId, renderComments);
 
 // =====================
-// 💬 댓글 작성
+// 🎯 버튼 이벤트
 // =====================
 window.addEventListener("DOMContentLoaded", () => {
 
@@ -115,13 +163,19 @@ window.addEventListener("DOMContentLoaded", () => {
   const reportBtn = document.getElementById("reportBtn");
   const deleteBtn = document.getElementById("deleteBtn");
   const commentBtn = document.getElementById("commentBtn");
-
-  console.log("LIKE BTN:", likeBtn);
-  console.log("DISLIKE BTN:", dislikeBtn);
+  const editBtn = document.getElementById("editBtn");
 
   if (likeBtn) likeBtn.onclick = () => likePost(postId);
   if (dislikeBtn) dislikeBtn.onclick = () => dislikePost(postId);
   if (reportBtn) reportBtn.onclick = () => reportPost(postId);
   if (deleteBtn) deleteBtn.onclick = () => deletePost(postId);
   if (commentBtn) commentBtn.onclick = () => addComment(postId);
-}); 
+
+  // ✏️ 수정 버튼
+  if (editBtn) {
+    editBtn.onclick = () => {
+      location.href = `edit.html?id=${postId}`;
+    };
+  }
+
+});

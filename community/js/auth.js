@@ -12,8 +12,16 @@ window.signup = async () => {
   const pw = document.getElementById("password").value;
 
   try {
-    await createUserWithEmailAndPassword(auth, email, pw);
+    const userCred = await createUserWithEmailAndPassword(auth, email, pw);
+    const user = userCred.user;
+
+    // 🔥 최소 데이터만 생성
+    await setDoc(doc(db, "users", user.uid), {
+      createdAt: new Date()
+    });
+
     alert("회원가입 완료");
+
   } catch (e) {
     if (e.code === "auth/email-already-in-use") {
       alert("이미 존재하는 이메일입니다");
