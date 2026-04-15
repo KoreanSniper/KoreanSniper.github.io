@@ -733,57 +733,89 @@ function getRegionById(stationId) {
  */
 
 function renderRegionalBoundaries() {
-    // 1. 역 좌표 추출 및 보로노이 계산
+    // =========================
+    // 1. 지도 전체 bounds 계산 (핵심🔥)
+    // =========================
+    const xs = stationList.map(s => s.x);
+    const ys = stationList.map(s => s.y);
+
+    const minX = Math.min(...xs) - 200;
+    const maxX = Math.max(...xs) + 200;
+    const minY = Math.min(...ys) - 200;
+    const maxY = Math.max(...ys) + 200;
+
+    // 👉 월드 좌표 기준 Voronoi
     const points = stationList.map(s => [s.x, s.y]);
     const delaunay = d3.Delaunay.from(points);
-    // 지도의 실제 범위를 고려하여 넉넉하게 설정
-    const voronoi = delaunay.voronoi([-2500, -2000, 3000, 3000]); 
+    const voronoi = delaunay.voronoi([minX, minY, maxX, maxY]);
 
-    const regionGroup = document.getElementById("region-boundaries") || document.createElementNS("http://www.w3.org/2000/svg", "g");
-    regionGroup.id = "region-boundaries";
-    
-    // 레이어 순서: 노선도(viewport)의 맨 첫 번째 자식으로 넣어 배경이 되게 함
-    if (!regionGroup.parentNode) {
+    // =========================
+    // 2. 그룹 생성 (viewport 안!)
+    // =========================
+    let regionGroup = document.getElementById("region-boundaries");
+
+    if (!regionGroup) {
+        regionGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        regionGroup.id = "region-boundaries";
+
+        // 🔥 핵심: viewport 안에 넣는다 (같이 움직이게)
         viewport.insertBefore(regionGroup, viewport.firstChild);
     }
 
-    const regionPaths = {};
-
-    // 2. 각 역의 보로노이 셀을 지역별로 그룹화
-    stationList.forEach((station, i) => {
-        const region = getRegionById(station.id); 
-        const cellPath = voronoi.renderCell(i);
-        
-        if (!regionPaths[region.id]) {
-            regionPaths[region.id] = { 
-                d: "", 
-                color: region.color, 
-                label: region.label // 툴팁 표시를 위해 label 저장
-            };
-        }
-        // 셀들의 경로 데이터를 하나로 합침
-        regionPaths[region.id].d += " " + cellPath;
-    });
-
-    // 기존 렌더링 결과 초기화
     regionGroup.innerHTML = "";
 
-    // 3. 합쳐진 지역별 폴리곤 생성
-    Object.entries(regionPaths).forEach(([id, data]) => {
+    const regionPaths = {};
+
+    // =========================
+    // 3. 안전하게 셀 생성
+    // =========================
+    stationList.forEach((station, i) => {
+        const cell = voronoi.cellPolygon(i);
+
+        if (!cell) return;
+
+        const region = getRegionById(station.id);
+
+        if (!regionPaths[region.id]) {
+            regionPaths[region.id] = {
+                path: "",
+                color: region.color,
+                label: region.label
+            };
+        }
+
+        // 👉 polygon → path 변환
+        const pathD = "M" + cell.map(p => p.join(",")).join("L") + "Z";
+
+        regionPaths[region.id].path += " " + pathD;
+    });
+
+    // =========================
+    // 4. 렌더링
+    // =========================
+    Object.values(regionPaths).forEach(data => {
+        if (!data.path.trim()) return;
+
         const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        pathEl.setAttribute("d", data.d.trim());
+
+        pathEl.setAttribute("d", data.path.trim());
         pathEl.setAttribute("fill", data.color);
         pathEl.setAttribute("fill-rule", "evenodd");
+
+        // 👉 너무 진하면 지도 가림
+        pathEl.setAttribute("opacity", "0.5");
+
         pathEl.setAttribute("stroke", "none");
-        pathEl.setAttribute("class", "region-path region-cell");
-        pathEl.dataset.region = id;
-        
-        // 마우스 호버 이벤트
+
+        // 👉 hover 유지 가능
+        pathEl.style.pointerEvents = "auto";
+
         pathEl.addEventListener("mouseenter", () => {
-            if (typeof drag !== 'undefined' && !drag) {
+            if (!drag) {
                 setRegion(`현재 구역: <strong>${data.label}</strong>`);
             }
         });
+
         pathEl.addEventListener("mouseleave", () => {
             setRegion("마우스를 올리면 구역 이름이 표시됩니다.");
         });
@@ -791,7 +823,6 @@ function renderRegionalBoundaries() {
         regionGroup.appendChild(pathEl);
     });
 }
-
 
 function renderLineOptions() {
     lineOptions.innerHTML = lineCatalog

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>내 글</title>
+
+<link rel="stylesheet" href="./css/discord.css">
+
+</head>
+
+<body>
+
+<div class="layout">
+
+  <!-- ================= 사이드바 ================= -->
+  <div class="sidebar">
+    <h2 class="logo">커뮤니티</h2>
+
+    <div class="menu">
+      <button onclick="location.href = './index.html'">🏠 홈</button>
+      <button onclick="location.href = './profile.html'">👤 프로필</button>
+      <button onclick="location.href = './login.html'">🚪 로그아웃</button>
+    </div>
+  </div>
+
+  <!-- ================= 메인 ================= -->
+  <div class="main">
+
+    <div class="header">
+      <h1>📄 내 글</h1>
+      <p>내가 작성한 게시글 목록</p>
+    </div>
+
+    <!-- 글 목록 -->
+    <div id="postList" class="post-list"></div>
+
+  </div>
+
+</div>
+
+<script type="module" src="./js/my-posts.js"></script>
+
+</body>
+</html>
