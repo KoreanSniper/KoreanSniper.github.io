@@ -273,6 +273,13 @@ service cloud.firestore {
     }
 
     // =====================
+    // GOMOKU MATCHMAKING
+    // =====================
+    match /gomokuMatchmaking/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // =====================
     // GOMOKU CHAT
     // =====================
     match /gomokuRooms/{roomId}/chat/{messageId} {
