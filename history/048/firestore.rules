@@ -1,0 +1,303 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == "seoul2linejh@gmail.com";
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isPostLikeToggle() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["likes", "dislikes"])
+        && request.resource.data.uid == resource.data.uid;
+    }
+
+    function roomIsParticipant() {
+      return signedIn()
+        && (
+          resource.data.hostId == request.auth.uid
+          || resource.data.guestId == request.auth.uid
+        );
+    }
+
+    function roomCommonFieldsValid() {
+      return request.resource.data.keys().hasAll([
+        "status",
+        "hostId",
+        "hostName",
+        "createdAt",
+        "updatedAt",
+        "state"
+      ])
+      && request.resource.data.hostId == resource.data.hostId
+      && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function minigameRoomData(roomId) {
+      return get(/databases/$(database)/documents/minigameRooms/$(roomId));
+    }
+
+    function minigameRoomParticipant(roomId) {
+      return signedIn()
+        && (
+          minigameRoomData(roomId).data.hostId == request.auth.uid
+          || minigameRoomData(roomId).data.guestId == request.auth.uid
+        );
+    }
+
+    // =====================
+    // PROFILES
+    // =====================
+    match /users/{userId} {
+      allow read: if signedIn();
+
+      allow create: if isOwner(userId) || isAdmin();
+
+      allow update: if isOwner(userId) || isAdmin();
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // =====================
+    // POSTS
+    // =====================
+    match /posts/{postId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(["title", "content", "uid", "email"]);
+
+      allow update: if signedIn()
+        && (
+          isPostLikeToggle()
+          || (
+            (resource.data.uid == request.auth.uid || isAdmin())
+            && request.resource.data.uid == resource.data.uid
+          )
+        );
+
+      allow delete: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // =====================
+    // COMMENTS
+    // =====================
+    match /comments/{commentId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(["postId", "content", "uid"]);
+
+      allow update: if signedIn();
+
+      allow delete: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // =====================
+    // POST LIKES
+    // =====================
+    match /likes/{likeId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.type in ["like", "dislike"];
+
+      allow update: if false;
+
+      allow delete: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // =====================
+    // COMMENT LIKES
+    // =====================
+    match /comment_likes/{likeId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.type in ["like", "dislike"];
+
+      allow update: if false;
+
+      allow delete: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // =====================
+    // POST REPORTS
+    // =====================
+    match /reports/{reportId} {
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.reason is string;
+
+      allow update, delete: if false;
+    }
+
+    // =====================
+    // COMMENT REPORTS
+    // =====================
+    match /comment_reports/{reportId} {
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.commentId is string
+        && request.resource.data.reason is string;
+
+      allow update, delete: if false;
+    }
+
+    // =====================
+    // MINIGAME ROOMS
+    // =====================
+    match /minigameRooms/{roomId} {
+      allow read: if signedIn()
+        && (
+          resource.data.status == "waiting"
+          || resource.data.hostId == request.auth.uid
+          || resource.data.guestId == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.status == "waiting"
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.state is map;
+
+      allow update: if signedIn()
+        && roomCommonFieldsValid()
+        && (
+          // Host can cancel waiting rooms or continue playing in active rooms.
+          (
+            request.auth.uid == resource.data.hostId
+          )
+          ||
+          // Guest can join a waiting room.
+          (
+            resource.data.status == "waiting"
+            && resource.data.guestId == null
+            && request.resource.data.status == "active"
+            && request.resource.data.guestId == request.auth.uid
+          )
+          ||
+          // Active games can be updated by either participant.
+          (
+            resource.data.status == "active"
+            && (
+              request.auth.uid == resource.data.hostId
+              || request.auth.uid == resource.data.guestId
+            )
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // =====================
+    // MINIGAME CHAT
+    // =====================
+    match /minigameRooms/{roomId}/chat/{messageId} {
+      allow read: if minigameRoomParticipant(roomId);
+
+      allow create: if minigameRoomParticipant(roomId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 180
+        && request.resource.data.keys().hasAll(["uid", "name", "text", "clientTs", "createdAt"]);
+
+      allow update, delete: if false;
+    }
+
+    // =====================
+    // GOMOKU ROOMS
+    // =====================
+    match /gomokuRooms/{roomId} {
+      allow read: if signedIn()
+        && (
+          resource.data.status == "waiting"
+          || resource.data.hostId == request.auth.uid
+          || resource.data.guestId == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.status == "waiting"
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.state is map;
+
+      allow update: if signedIn()
+        && roomCommonFieldsValid()
+        && (
+          request.auth.uid == resource.data.hostId
+          || (
+            resource.data.status == "waiting"
+            && resource.data.guestId == null
+            && request.resource.data.status == "active"
+            && request.resource.data.guestId == request.auth.uid
+          )
+          || (
+            resource.data.status == "active"
+            && (
+              request.auth.uid == resource.data.hostId
+              || request.auth.uid == resource.data.guestId
+            )
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // =====================
+    // GOMOKU CHAT
+    // =====================
+    match /gomokuRooms/{roomId}/chat/{messageId} {
+      allow read: if signedIn()
+        && (
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 180
+        && request.resource.data.keys().hasAll(["uid", "name", "text", "clientTs", "createdAt"]);
+
+      allow update, delete: if false;
+    }
+
+    // =====================
+    // GOMOKU AI MEMORY
+    // =====================
+    match /gomokuAiMemory/{memoryId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

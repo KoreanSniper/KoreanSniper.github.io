@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오목 전장 - BlockRail Arcade</title>
+  <link rel="stylesheet" href="../community/css/discord.css">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <meta name="theme-color" content="#5865f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="../BlockRail.png">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2 class="logo"><a class="logo-link" href="../minigame/index.html">BlockRail</a></h2>
+
+      <section class="panel mode-panel">
+        <h2>대전 방식</h2>
+        <input id="playerName" class="name-field" type="text" placeholder="표시 이름(선택)">
+        <div class="difficulty-row">
+          <label for="aiDifficulty">AI 난이도</label>
+          <select id="aiDifficulty" class="ai-difficulty-field">
+            <option value="easy">쉬움</option>
+            <option value="normal" selected>보통</option>
+            <option value="hard">어려움</option>
+          </select>
+        </div>
+        <div class="mode-actions">
+          <button type="button" onclick="startLocalAIMatch()">AI 대전</button>
+          <button type="button" onclick="startOnlineMatch()">온라인 매칭</button>
+          <button type="button" onclick="restartCurrentGame()">다시 시작</button>
+          <button type="button" onclick="cancelOnlineMatch()">매칭 취소</button>
+        </div>
+        <p id="matchStatus" class="panel-hint">기본은 AI 대전입니다. 온라인을 누르면 상대를 자동으로 찾습니다.</p>
+      </section>
+
+      <section class="panel">
+        <h2>규칙 요약</h2>
+        <ol class="panel-hint" style="margin:0; padding-left: 18px; line-height: 1.7;">
+          <li>11x11 보드에서 5개를 먼저 놓으면 승리합니다.</li>
+          <li>5번째 칸은 무브칸 3개가 연결되고, 그 칸에 돌을 놓으면 상대 돌을 한 칸 밀 수 있습니다.</li>
+          <li>레일건과 자폭칸을 사용해 한 방에 판을 흔들 수 있습니다.</li>
+        </ol>
+      </section>
+
+      <section id="specialPanel" class="panel special-panel">
+        <h2>특수 기능</h2>
+        <p class="panel-hint">무브칸에 돌을 두면 방향 선택이 생깁니다. 레일건은 보너스 패턴이 생기면 발동할 수 있습니다.</p>
+        <div class="panel-actions">
+          <button id="railgunBtn" type="button" onclick="activateRailgun()">레일건 발동</button>
+        </div>
+        <div id="directionGrid" class="direction-grid" aria-label="무브칸 방향 선택"></div>
+      </section>
+
+      <section class="panel">
+        <h2>턴 기록</h2>
+        <div id="turnHistory" class="turn-history"></div>
+        <div class="panel-actions">
+          <button type="button" onclick="copyTurnHistory()">턴 기록 복사</button>
+          <button type="button" onclick="copyBoardPositions()">현재 판 복사</button>
+        </div>
+        <p class="panel-hint">대화는 차곡차곡 정리되고, 필요하면 전체를 복사할 수 있습니다.</p>
+      </section>
+
+      <section class="panel chat-panel">
+        <h2>채팅</h2>
+        <p id="chatStatus" class="panel-hint">온라인 대전에서만 채팅을 사용할 수 있습니다.</p>
+        <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+        <div class="chat-input-row">
+          <input id="chatInput" class="chat-input" type="text" placeholder="메시지를 입력하세요">
+          <button id="chatSendBtn" type="button" onclick="sendChatMessage()">전송</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="card game-card">
+        <div class="game-shell">
+          <div>
+            <h1>오목 전장</h1>
+            <p id="gameStatus" class="game-status">게임을 불러오는 중입니다.</p>
+            <div id="turnInfo" class="turn-row"></div>
+            <div id="roomInfo" class="turn-row"></div>
+            <div class="legend" aria-label="보드 안내">
+              <span class="legend-item"><span class="legend-swatch" style="background:linear-gradient(135deg, rgba(59,165,93,.65), rgba(34,197,94,.35));"></span>무브칸</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:linear-gradient(135deg, rgba(239,68,68,.65), rgba(248,113,113,.35));"></span>자폭칸</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:linear-gradient(135deg, rgba(245,158,11,.65), rgba(251,191,36,.35));"></span>레일건</span>
+            </div>
+          </div>
+
+          <div id="board" class="board gomoku-board" aria-label="오목 전장 보드"></div>
+
+          <div class="game-actions">
+            <button type="button" onclick="goHome()">홈으로</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

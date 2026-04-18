@@ -1,0 +1,37 @@
+{
+  "name": "BlockRail Arcade",
+  "short_name": "BlockRail",
+  "description": "BlockRail Arcade mobile installable app",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1e1f22",
+  "theme_color": "#5865f2",
+  "icons": [
+    {
+      "src": "./BlockRail.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./BlockRail.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Minigame",
+      "short_name": "Minigame",
+      "url": "./minigame/index.html"
+    },
+    {
+      "name": "Gomoku",
+      "short_name": "Gomoku",
+      "url": "./gomoku/index.html"
+    }
+  ]
+}

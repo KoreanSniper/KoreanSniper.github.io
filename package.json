@@ -1,0 +1,50 @@
+{
+  "name": "blockrail-arcade",
+  "version": "1.0.0",
+  "private": true,
+  "author": "BlockRail Arcade",
+  "description": "BlockRail Arcade desktop launcher",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.blockrail.arcade",
+    "productName": "BlockRail Arcade",
+    "electronVersion": "35.0.0",
+    "files": [
+      "electron-main.js",
+      "index.html",
+      "lobby.html",
+      "styles.css",
+      "subway-data.js",
+      "BlockRail.png",
+      "manifest.webmanifest",
+      "sw.js",
+      "pwa-register.js",
+      "community/**/*",
+      "history/**/*",
+      "train-map/**/*",
+      "admin-map/**/*",
+      "minigame/**/*",
+      "gomoku/**/*"
+    ],
+    "asar": true,
+    "directories": {
+      "output": "release-latest"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "forceCodeSigning": false,
+      "target": [
+        "portable"
+      ],
+      "icon": "BlockRail.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

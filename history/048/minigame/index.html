@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니게임 허브 - BlockRail Arcade</title>
+  <link rel="stylesheet" href="../community/css/discord.css">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <meta name="theme-color" content="#5865f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="../BlockRail.png">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <div class="layout hub-layout">
+    <aside class="sidebar hub-sidebar">
+      <h2 class="logo"><a class="logo-link" href="../index.html">BlockRail</a></h2>
+
+      <section class="panel hub-panel">
+        <p class="hub-eyebrow">Mini Game Hub</p>
+        <h2>미니게임 허브</h2>
+        <p class="panel-hint">
+          지금은 오목 전장이 중심입니다. 빠르게 열고, AI 대전이나 온라인 매칭으로 바로 들어갈 수 있게 정리했습니다.
+        </p>
+      </section>
+
+      <section class="panel hub-panel">
+        <h2>바로 시작</h2>
+        <a class="hub-launch-button" href="../gomoku/index.html">오목 전장 열기</a>
+        <p class="panel-hint">설치판과 웹판 모두 같은 규칙과 저장 구조를 사용합니다.</p>
+      </section>
+
+      <section class="panel hub-panel">
+        <h2>핵심 정보</h2>
+        <div class="hub-meta-grid">
+          <div class="hub-meta-card">
+            <strong>추천 모드</strong>
+            <span>AI 대전</span>
+          </div>
+          <div class="hub-meta-card">
+            <strong>접속 방식</strong>
+            <span>웹 / PWA / exe</span>
+          </div>
+          <div class="hub-meta-card">
+            <strong>전장 규칙</strong>
+            <span>11x11 보드 · 5목 승리</span>
+          </div>
+          <div class="hub-meta-card">
+            <strong>특수 요소</strong>
+            <span>무브칸 · 자폭칸 · 레일건</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel download-card hub-download">
+        <h2>Windows 설치판</h2>
+        <div class="download-actions">
+          <a class="download-link" href="../BlockRail%20Arcade%201.0.0.exe" download>exe 다운로드</a>
+        </div>
+        <p class="panel-hint">배포용 설치 파일을 바로 받을 수 있습니다.</p>
+      </section>
+    </aside>
+
+    <main class="main hub-main">
+      <section class="hub-hero card">
+        <div class="hub-hero-copy">
+          <p class="eyebrow">BlockRail Arcade</p>
+          <h1>지금 가장 깔끔하게 들어가는 미니게임 허브</h1>
+          <p class="home-copy hub-lead">
+            복잡한 메뉴를 걷어내고, 오목 전장으로 바로 진입할 수 있게 만든 시작 화면입니다.
+            AI 대전, 온라인 매칭, 채팅, 설치판 다운로드까지 한 화면에서 정리했습니다.
+          </p>
+
+          <div class="hub-badge-row">
+            <span class="hub-badge">오목 전장</span>
+            <span class="hub-badge">AI 대전</span>
+            <span class="hub-badge">온라인 매칭</span>
+            <span class="hub-badge">설치판 지원</span>
+          </div>
+
+          <div class="hub-action-row">
+            <a class="hub-primary-cta" href="../gomoku/index.html">오목 전장 바로가기</a>
+            <a class="download-link" href="../BlockRail%20Arcade%201.0.0.exe" download>설치판 받기</a>
+          </div>
+        </div>
+
+        <div class="hub-spotlight">
+          <div class="hub-spotlight-card hub-spotlight-accent">
+            <span class="hub-spotlight-kicker">추천 플레이</span>
+            <strong>AI 대전</strong>
+            <span>기본 규칙부터 특수칸까지 빠르게 확인하기 좋습니다.</span>
+          </div>
+          <div class="hub-spotlight-card">
+            <span class="hub-spotlight-kicker">현재 버전</span>
+            <strong>오프라인도 가능</strong>
+            <span>로컬 실행 위주로 설계되어 웹과 설치판의 느낌이 크게 다르지 않습니다.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="hub-grid hub-feature-grid">
+        <article class="launch-card launch-card-primary hub-feature-card">
+          <span class="launch-kicker">바로 플레이</span>
+          <strong>오목 전장</strong>
+          <span>
+            11x11 보드에서 5목을 먼저 완성해야 승리합니다.
+            특수칸과 레일건이 있어 일반 오목보다 훨씬 역동적입니다.
+          </span>
+          <div class="hub-card-actions">
+            <a class="download-link" href="../gomoku/index.html">시작하기</a>
+            <a class="download-link" href="../gomoku/index.html#rules">규칙 보기</a>
+          </div>
+        </article>
+
+        <article class="launch-card hub-info-card">
+          <span class="launch-kicker">대전 방식</span>
+          <strong>AI / 온라인 / 로컬</strong>
+          <span>
+            인터넷이 있으면 온라인 기능을 쓰고, 없으면 로컬 AI 대전으로 바로 이어집니다.
+          </span>
+        </article>
+
+        <article class="launch-card hub-info-card">
+          <span class="launch-kicker">설치 환경</span>
+          <strong>웹 + exe 동시 지원</strong>
+          <span>
+            브라우저에서 실행하거나 Windows 설치판으로 바로 내려받아 사용할 수 있습니다.
+          </span>
+        </article>
+      </section>
+
+      <section class="card hub-footer-card">
+        <h1>플레이 흐름</h1>
+        <div class="hub-footer-grid">
+          <div class="hub-footer-item">
+            <strong>1</strong>
+            <span>오목 전장을 연다</span>
+          </div>
+          <div class="hub-footer-item">
+            <strong>2</strong>
+            <span>AI 대전 또는 온라인을 고른다</span>
+          </div>
+          <div class="hub-footer-item">
+            <strong>3</strong>
+            <span>5목을 1턴 유지해 승리한다</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
