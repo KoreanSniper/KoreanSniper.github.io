@@ -6,6 +6,7 @@ let collection = null;
 let doc = null;
 let getDoc = null;
 let getDocs = null;
+let signInAnonymously = null;
 let limit = null;
 let orderBy = null;
 let onSnapshot = null;
@@ -18,6 +19,7 @@ let where = null;
 let firebaseLoadPromise = null;
 let firebaseUnavailable = false;
 let firebaseListenerInstalled = false;
+let authAnonymousPromise = null;
 
 const BOARD_SIZE = 11;
 const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE;
@@ -120,6 +122,7 @@ async function ensureFirebase() {
       auth = firebaseModule.auth;
       db = firebaseModule.db;
       onAuthStateChanged = authModule.onAuthStateChanged;
+      signInAnonymously = authModule.signInAnonymously;
       addDoc = firestoreModule.addDoc;
       collection = firestoreModule.collection;
       doc = firestoreModule.doc;
@@ -437,6 +440,48 @@ async function ensureIdentity() {
   return { id: authUser?.uid || getGuestId(), name: getDisplayName() };
 }
 
+async function ensureOnlineIdentity() {
+  if (authUser) return true;
+  if (!(await ensureFirebase())) return false;
+  if (!authReady) {
+    await new Promise((resolve) => {
+      const timer = setInterval(() => {
+        if (authReady) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+  }
+  if (authUser) return true;
+  if (!signInAnonymously) return false;
+  if (!authAnonymousPromise) {
+    authReady = false;
+    authAnonymousPromise = (async () => {
+      try {
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.warn("익명 로그인을 시작하지 못했습니다.", error);
+        authReady = true;
+      } finally {
+        authAnonymousPromise = null;
+      }
+    })();
+  }
+  await authAnonymousPromise;
+  if (!authReady) {
+    await new Promise((resolve) => {
+      const timer = setInterval(() => {
+        if (authReady) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+  }
+  return Boolean(authUser);
+}
+
 function syncNameField() {
   if (ui.playerName && !ui.playerName.value.trim()) ui.playerName.placeholder = getDisplayName();
 }
@@ -537,7 +582,130 @@ function lineOwner(state, line) {
 }
 
 function getWinningLine(state, player) {
-  return FIVE_LINES.find((line) => line.every((index) => state.board[index]?.owner === player)) || null;
+  const directions = [
+    { dr: 0, dc: 1 },
+    { dr: 1, dc: 0 },
+    { dr: 1, dc: 1 },
+    { dr: 1, dc: -1 },
+  ];
+
+  for (const { dr, dc } of directions) {
+    for (let row = 0; row < BOARD_SIZE; row++) {
+      for (let col = 0; col < BOARD_SIZE; col++) {
+        const prevRow = row - dr;
+        const prevCol = col - dc;
+        if (toBounds(prevRow, prevCol) && state.board[idx(prevRow, prevCol)]?.owner === player) continue;
+
+        const line = [];
+        for (let step = 0; step < WIN_LENGTH; step++) {
+          const nr = row + dr * step;
+          const nc = col + dc * step;
+          if (!toBounds(nr, nc)) {
+            line.length = 0;
+            break;
+          }
+          const stone = state.board[idx(nr, nc)];
+          if (!stone || stone.owner !== player) {
+            line.length = 0;
+            break;
+          }
+          line.push(idx(nr, nc));
+        }
+        if (line.length !== WIN_LENGTH) continue;
+
+        const nextRow = row + dr * WIN_LENGTH;
+        const nextCol = col + dc * WIN_LENGTH;
+        if (toBounds(nextRow, nextCol) && state.board[idx(nextRow, nextCol)]?.owner === player) continue;
+        return line;
+      }
+    }
+  }
+  return null;
+}
+
+function countConsecutiveFrom(state, index, player, dr, dc) {
+  let count = 1;
+  const { row, col } = rc(index);
+
+  let nr = row + dr;
+  let nc = col + dc;
+  while (toBounds(nr, nc) && state.board[idx(nr, nc)]?.owner === player) {
+    count += 1;
+    nr += dr;
+    nc += dc;
+  }
+
+  nr = row - dr;
+  nc = col - dc;
+  while (toBounds(nr, nc) && state.board[idx(nr, nc)]?.owner === player) {
+    count += 1;
+    nr -= dr;
+    nc -= dc;
+  }
+
+  return count;
+}
+
+function hasOverline(state, index, player) {
+  return [
+    [0, 1],
+    [1, 0],
+    [1, 1],
+    [1, -1],
+  ].some(([dr, dc]) => countConsecutiveFrom(state, index, player, dr, dc) > WIN_LENGTH);
+}
+
+function countOpenThreeDirections(state, index, player) {
+  const patterns = ["01110", "010110", "011010"];
+  let count = 0;
+
+  for (const [dr, dc] of [
+    [0, 1],
+    [1, 0],
+    [1, 1],
+    [1, -1],
+  ]) {
+    const cells = [];
+    for (let offset = -4; offset <= 4; offset++) {
+      const row = rc(index).row + dr * offset;
+      const col = rc(index).col + dc * offset;
+      if (!toBounds(row, col)) {
+        cells.push("2");
+        continue;
+      }
+      const stone = state.board[idx(row, col)];
+      if (!stone) cells.push("0");
+      else if (stone.owner === player) cells.push("1");
+      else cells.push("2");
+    }
+
+    const text = cells.join("");
+    const center = 4;
+    const hasPattern = patterns.some((pattern) => {
+      const start = Math.max(0, center - pattern.length + 1);
+      const end = Math.min(center, text.length - pattern.length);
+      for (let i = start; i <= end; i++) {
+        const slice = text.slice(i, i + pattern.length);
+        if (slice.includes("2")) continue;
+        if (!slice.includes("1")) continue;
+        if (slice === pattern) return true;
+      }
+      return false;
+    });
+
+    if (hasPattern) count += 1;
+  }
+
+  return count;
+}
+
+function isForbiddenMove(state, index, player) {
+  if (player !== "X") return false;
+  if (state.board[index]) return false;
+  const preview = cloneState(state);
+  preview.board[index] = makeStone(player);
+  if (hasOverline(preview, index, player)) return true;
+  return countOpenThreeDirections(preview, index, player) >= 2;
 }
 
 function boardFull(state) {
@@ -619,8 +787,11 @@ function clearSpecialAt(state, index) {
 function legalPlacements(state) {
   const moves = [];
   if (state.pendingMovePush) return moves;
+  const player = state.currentPlayer;
   for (let i = 0; i < BOARD_CELLS; i++) {
-    if (!state.board[i] && !(state.pushLocks?.[i] > 0)) moves.push({ to: i });
+    if (state.board[i] || state.pushLocks?.[i] > 0) continue;
+    if (isForbiddenMove(state, i, player)) continue;
+    moves.push({ to: i });
   }
   return moves;
 }
@@ -1435,6 +1606,7 @@ function applyPlacementToState(state, index, silent = false, skipAnnotation = fa
   const player = state.currentPlayer;
   if (state.gameOver || state.pendingMovePush) return false;
   if (state.board[index]) return false;
+  if (isForbiddenMove(state, index, player)) return false;
   if (!legalPlacements(state, player).some((item) => item.to === index)) return false;
   const before = cloneState(state);
 
@@ -1738,6 +1910,12 @@ async function startOnlineMatch() {
     return;
   }
 
+  const hasIdentity = await ensureOnlineIdentity();
+  if (!hasIdentity) {
+    startLocalAIMatch("온라인 대전을 시작하려면 Firebase 로그인이나 익명 로그인이 필요합니다.");
+    return;
+  }
+
   const identity = await ensureIdentity();
   const waitingQuery = query(collection(db, ROOM_COLLECTION), where("status", "==", "waiting"), limit(10));
   const waitingSnapshot = await getDocs(waitingQuery);
@@ -1993,7 +2171,7 @@ function renderStatus() {
       : "",
     gameState.gameOver
       ? (gameState.winner ? `${gameState.winner}가 승리했습니다.` : gameState.drawReason || "무승부입니다.")
-      : "11x11 보드에서 5개를 먼저 잇으면 승리합니다.",
+      : "11x11 보드에서 정확히 5개를 잇으면 승리합니다.",
     gameState.pendingMovePush
       ? `무브칸: 상대 돌을 한 칸 밀 방향을 고르세요. (${coordLabel(gameState.pendingMovePush.index)})`
       : `공개된 특수칸: 무브칸 ${gameState.moveTiles?.length || 0}개, 자폭칸 ${gameState.bombTiles?.length || 0}개`,
