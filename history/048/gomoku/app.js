@@ -518,6 +518,12 @@ function clearOnlineListeners() {
   }
 }
 
+function isRoomStale(room, maxAgeMs = 5 * 60 * 1000) {
+  const updatedAt = room?.updatedAt;
+  const millis = typeof updatedAt?.toMillis === "function" ? updatedAt.toMillis() : null;
+  return Number.isFinite(millis) && Date.now() - millis >= maxAgeMs;
+}
+
 function stopOnlineSession() {
   stopAiTimer();
   clearOnlineListeners();
@@ -554,8 +560,16 @@ async function deleteOnlineRoom(roomRef = session.roomRef) {
   } catch (error) {
     console.error(error);
   }
+  await clearMatchmakingIfRoom(roomRef.id);
+}
+
+async function clearMatchmakingIfRoom(roomId) {
+  if (!roomId || !(await ensureFirebase())) return;
   try {
-    await setDoc(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
+    const matchRef = doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC);
+    const matchSnap = await getDoc(matchRef);
+    if (!matchSnap.exists() || matchSnap.data()?.roomId !== roomId) return;
+    await setDoc(matchRef, {
       roomId: null,
       hostId: null,
       updatedAt: serverTimestamp(),
@@ -1972,6 +1986,8 @@ async function startOnlineMatch() {
 
   const identity = await ensureIdentity();
   try {
+    await cleanupStaleWaitingRooms();
+
     const waitingQuery = query(collection(db, ROOM_COLLECTION), where("status", "==", "waiting"), limit(10));
     const waitingSnapshot = await getDocs(waitingQuery);
 
@@ -2049,6 +2065,21 @@ async function tryJoinRoom(roomRef, identity) {
   return joined;
 }
 
+async function cleanupStaleWaitingRooms() {
+  if (!(await ensureFirebase())) return;
+  try {
+    const waitingQuery = query(collection(db, ROOM_COLLECTION), where("status", "==", "waiting"), limit(20));
+    const snapshot = await getDocs(waitingQuery);
+    for (const roomDoc of snapshot.docs) {
+      const room = roomDoc.data();
+      if (!isRoomStale(room)) continue;
+      await deleteOnlineRoom(roomDoc.ref);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 function attachRoomListener(roomRef, hostCreated) {
   if (session.unsubscribe) session.unsubscribe();
   session.unsubscribe = onSnapshot(roomRef, (snap) => {
@@ -2092,11 +2123,11 @@ function attachRoomListener(roomRef, hostCreated) {
 async function fallbackToAiIfWaiting(roomRef) {
   if (session.mode !== "online" || session.roomRef?.id !== roomRef.id) return;
   try {
-    await updateDoc(roomRef, { status: "cancelled", updatedAt: serverTimestamp() });
+    await deleteOnlineRoom(roomRef);
   } catch (error) {
     console.error(error);
   }
-    startLocalAIMatch("상대가 없어서 AI 대전으로 전환되었습니다.");
+  startLocalAIMatch("상대가 없어서 AI 대전으로 전환되었습니다.");
 }
 
 async function cancelOnlineMatch() {
@@ -2465,5 +2496,3 @@ document.addEventListener("visibilitychange", () => {
     scheduleAiTurn();
   }
 });
-
-

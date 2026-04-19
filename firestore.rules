@@ -44,6 +44,11 @@ service cloud.firestore {
       && request.resource.data.createdAt == resource.data.createdAt;
     }
 
+    function roomIsStale() {
+      return resource.data.updatedAt is timestamp
+        && resource.data.updatedAt < request.time - duration.value(5, 'm');
+    }
+
     function minigameRoomData(roomId) {
       return get(/databases/$(database)/documents/minigameRooms/$(roomId));
     }
@@ -217,6 +222,7 @@ service cloud.firestore {
         && (
           request.auth.uid == resource.data.hostId
           || request.auth.uid == resource.data.guestId
+          || roomIsStale()
           || isAdmin()
         );
     }
