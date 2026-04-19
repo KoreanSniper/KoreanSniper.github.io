@@ -1,5 +1,5 @@
 ﻿import { auth, db } from "../community/js/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   addDoc,
   collection,
@@ -13,6 +13,7 @@ import {
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getNicknameIssue, isAllowedNickname, getSafeNickname } from "../nickname-policy.js";
 
 // 보드 크기와 시간 규칙은 여기서 한 번에 관리한다.
 const BOARD_SIZE = 5;
@@ -45,15 +46,22 @@ const DIRECTIONS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 const THREE_LINES = buildThreeLines();
 
 // ui는 화면 요소 저장소, session은 매칭/AI/채팅 상태 저장소다.
-const ui = { board:null, status:null, turnInfo:null, roomInfo:null, matchStatus:null, playerName:null, aiDifficulty:null, skipTurnBtn:null, turnHistory:null, chatMessages:null, chatInput:null, chatStatus:null, chatSendBtn:null };
+const ui = { board:null, status:null, turnInfo:null, roomInfo:null, matchStatus:null, playerName:null, aiDifficulty:null, accountStatus:null, accountLogoutBtn:null, skipTurnBtn:null, turnHistory:null, chatMessages:null, chatInput:null, chatStatus:null, chatSendBtn:null };
 const session = { mode:"idle", roomRef:null, roomId:null, seat:null, host:false, unsubscribe:null, timeoutId:null, aiTimer:null, clockTimer:null, autoPassTimer:null, notice:"", roomStatus:null, chatUnsubscribe:null, chatLog:[], aiThinking:false };
 let authUser = null;
 let authReady = false;
 let gameState = createInitialState();
 let selectedIndex = null;
+let lastValidPlayerName = "";
 
-// 로그인 상태가 바뀌면 이름 입력칸과 화면을 다시 그린다.
-onAuthStateChanged(auth, (user) => { authUser = user; authReady = true; syncNameField(); renderAll(); });
+// 로그인 상태가 바뀌면 이름 입력칸, 계정 패널, 화면을 다시 그린다.
+onAuthStateChanged(auth, (user) => {
+  authUser = user;
+  authReady = true;
+  syncNameField();
+  updateAccountPanel();
+  renderAll();
+});
 
 // HTML에서 직접 호출하는 함수들은 window에 붙여둔다.
 window.startDefaultGame = startDefaultGame;
@@ -69,6 +77,7 @@ window.sendChatMessage = sendChatMessage;
 window.copyTurnHistory = copyTurnHistory;
 window.copyBoardPositions = copyBoardPositions;
 window.copyDesktopBuildGuide = copyDesktopBuildGuide;
+window.logoutCurrentAccount = logoutCurrentAccount;
 
 document.addEventListener("DOMContentLoaded", () => {
   // 화면의 각 패널과 버튼을 한 번에 연결한다.
@@ -79,6 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
   ui.matchStatus = document.getElementById("matchStatus");
   ui.playerName = document.getElementById("playerName");
   ui.aiDifficulty = document.getElementById("aiDifficulty");
+  ui.accountStatus = document.getElementById("accountStatus");
+  ui.accountLogoutBtn = document.getElementById("accountLogoutBtn");
   ui.skipTurnBtn = document.getElementById("skipTurnBtn");
   ui.turnHistory = document.getElementById("turnHistory");
   ui.chatMessages = document.getElementById("chatMessages");
@@ -93,9 +104,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (ui.playerName) {
     // 표시 이름은 새로고침 후에도 유지되도록 저장한다.
-    ui.playerName.value = localStorage.getItem(NAME_KEY) || "";
+    const savedName = localStorage.getItem(NAME_KEY) || "";
+    ui.playerName.value = isAllowedNickname(savedName, authUser || {}) ? savedName : "";
+    if (!isAllowedNickname(savedName, authUser || {})) {
+      localStorage.removeItem(NAME_KEY);
+    }
+    lastValidPlayerName = ui.playerName.value.trim();
     ui.playerName.addEventListener("input", () => {
-      localStorage.setItem(NAME_KEY, ui.playerName.value.trim());
+      const typed = ui.playerName.value.trim();
+      if (!typed) {
+        lastValidPlayerName = "";
+        localStorage.removeItem(NAME_KEY);
+        renderAll();
+        return;
+      }
+
+      if (!isAllowedNickname(typed, authUser || {})) {
+        ui.playerName.value = lastValidPlayerName;
+        setNotice(getNicknameIssue(typed, authUser || {}) || "닉네임을 사용할 수 없습니다.");
+        return;
+      }
+
+      lastValidPlayerName = typed;
+      localStorage.setItem(NAME_KEY, typed);
       renderAll();
     });
   }
@@ -121,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  updateAccountPanel();
   ensureClockTicker();
   showHomePage();
   renderAll();
@@ -903,7 +935,7 @@ function getGuestId() {
 
 function getDisplayName() {
   const typed = ui.playerName?.value.trim() || localStorage.getItem(NAME_KEY)?.trim();
-  if (typed) return typed;
+  if (typed && isAllowedNickname(typed, authUser || {})) return getSafeNickname(typed, "User", authUser || {});
   if (authUser?.email) return authUser.email.split("@")[0];
   return getGuestId();
 }
@@ -919,6 +951,27 @@ async function ensureIdentity() {
 
 function syncNameField() {
   if (ui.playerName && !ui.playerName.value.trim()) ui.playerName.placeholder = getDisplayName();
+}
+
+function updateAccountPanel() {
+  const signedIn = Boolean(authUser);
+  if (ui.accountStatus) {
+    ui.accountStatus.textContent = signedIn
+      ? `로그인됨: ${authUser.email || "계정"}`
+      : "회원가입이나 로그인으로 닉네임을 더 안전하게 쓸 수 있습니다.";
+  }
+  if (ui.accountLogoutBtn?.style) {
+    ui.accountLogoutBtn.style.display = signedIn ? "inline-flex" : "none";
+  }
+}
+
+async function logoutCurrentAccount() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("ACCOUNT LOGOUT ERROR:", error);
+    alert("로그아웃에 실패했습니다.");
+  }
 }
 
 function stopAiTimer() { if (session.aiTimer) { clearTimeout(session.aiTimer); session.aiTimer = null; } session.aiThinking = false; }
@@ -1159,7 +1212,7 @@ function renderChat() {
           const mine = message.uid && (message.uid === authUser?.uid || message.uid === getGuestId());
           return `
             <div class="chat-item ${mine ? "mine" : "theirs"}">
-              <div class="chat-meta">${message.name || "익명"} · ${message.timeText || ""}</div>
+              <div class="chat-meta">${escapeHtml(message.name || "익명")} · ${escapeHtml(message.timeText || "")}</div>
               <div class="chat-bubble">${escapeHtml(message.text || "")}</div>
             </div>`;
         })

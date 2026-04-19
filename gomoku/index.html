@@ -19,6 +19,27 @@
     <aside class="sidebar">
       <h2 class="logo"><a class="logo-link" href="../minigame/index.html">BlockRail</a></h2>
 
+      <section class="panel">
+        <h2>계정</h2>
+        <p id="accountStatus" class="panel-hint">회원가입이나 로그인으로 닉네임을 더 안전하게 쓸 수 있습니다.</p>
+        <div class="panel-actions">
+          <a class="download-link" href="../community/index.html">회원가입</a>
+          <a class="download-link" href="../community/index.html">로그인</a>
+          <button id="accountLogoutBtn" class="btn-secondary" type="button" onclick="logoutCurrentAccount()">로그아웃</button>
+        </div>
+      </section>
+
+      <section class="panel lobby-panel">
+        <h2>로비</h2>
+        <p id="lobbyStatus" class="panel-hint">현재 진행 중인 오목 경기를 보고, 바로 관전할 수 있습니다.</p>
+        <div class="panel-actions">
+          <button type="button" onclick="startLocalAIMatch()">AI 경기</button>
+          <button type="button" onclick="startOnlineMatch()">온라인 경기</button>
+          <button type="button" onclick="cancelOnlineMatch()">매칭 취소</button>
+        </div>
+        <div id="lobbyList" class="lobby-list" aria-live="polite"></div>
+      </section>
+
       <section class="panel mode-panel">
         <h2>대전 방식</h2>
         <input id="playerName" class="name-field" type="text" placeholder="표시 이름(선택)">

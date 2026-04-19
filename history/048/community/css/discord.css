@@ -457,6 +457,23 @@ textarea {
   font-weight: 800;
 }
 
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(35, 192, 109, 1), rgba(19, 144, 77, 1));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+  box-shadow: 0 8px 16px rgba(35, 192, 109, 0.22);
+}
+
 .profile-actions {
   margin-top: 16px;
 }
@@ -931,6 +948,67 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.lobby-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.lobby-empty {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.lobby-card {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(17, 23, 35, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: grid;
+  gap: 8px;
+}
+
+.lobby-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lobby-card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.lobby-card-title strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.lobby-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.lobby-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lobby-card-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
 .mode-actions button {
   flex: 1 1 120px;
 }
@@ -1172,11 +1250,27 @@ textarea {
 }
 
 @media (max-width: 760px) {
+  .app {
+    overflow: auto;
+  }
+
+  .layout {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   .sidebar {
-    max-height: 40vh;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 14px;
   }
 
   .main {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
     padding: 12px;
   }
 
@@ -1228,5 +1322,27 @@ textarea {
 
   .chat-item {
     max-width: 100%;
+  }
+
+  #captchaWrap {
+    width: 100%;
+  }
+
+  #captchaWrap > div:last-child {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #captchaWrap > div:last-child > * {
+    width: 100%;
+  }
+
+  #captchaWrap input,
+  #captchaWrap button {
+    width: 100%;
+  }
+
+  #captchaWrap button {
+    white-space: nowrap;
   }
 }

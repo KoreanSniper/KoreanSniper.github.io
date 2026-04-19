@@ -1,22 +1,24 @@
 import { auth, db } from "./firebase.js";
 import { ADMIN_EMAIL, escapeHTML, renderNameWithBadge } from "./util.js";
+import { getNicknameIssue, isAllowedNickname } from "../../nickname-policy.js";
 
 import {
   onAuthStateChanged,
   signOut,
-  updateProfile
+  updateProfile,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 import {
+  collection,
   doc,
   getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
   getDocs,
-  orderBy
+  orderBy,
+  query,
+  setDoc,
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const urlUid = new URLSearchParams(location.search).get("id");
 
 window.logout = async () => {
@@ -41,30 +43,29 @@ onAuthStateChanged(auth, async (user) => {
 
   if (snap.exists()) {
     data = snap.data();
-    document.getElementById("email").innerText =
-      targetUid === user.uid ? user.email : "-";
-  } else {
-    document.getElementById("email").innerText = targetUid === user.uid ? user.email : "-";
   }
+
+  document.getElementById("email").innerText =
+    targetUid === user.uid ? user.email : "-";
 
   const username = data.username || "User";
   const profileInfo = {
     email: data.email || (targetUid === user.uid ? user.email : ""),
-    isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL)
+    isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL),
   };
 
   document.getElementById("username").innerHTML =
     renderNameWithBadge(username, profileInfo);
 
-  document.getElementById("status").innerText =
-    data.status || "온라인";
+  document.getElementById("status").innerText = data.status || "Inactive";
 
   document.getElementById("created").innerText =
     data.createdAt?.toDate?.().toLocaleString() || "-";
 
   if (targetUid !== user.uid) {
-    document.querySelectorAll(".profile-actions")
-      .forEach(el => el.style.display = "none");
+    document
+      .querySelectorAll(".profile-actions")
+      .forEach((el) => (el.style.display = "none"));
   }
 
   loadUserPosts(targetUid);
@@ -80,18 +81,18 @@ async function loadUserPosts(uid) {
     const q = query(
       collection(db, "posts"),
       where("uid", "==", uid),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      box.innerHTML = "<p>작성한 글이 없음</p>";
+      box.innerHTML = "<p>No posts yet.</p>";
       document.getElementById("posts").innerText = "0";
       return;
     }
 
-    snap.forEach(d => {
+    snap.forEach((d) => {
       const data = d.data();
 
       const div = document.createElement("div");
@@ -103,8 +104,8 @@ async function loadUserPosts(uid) {
       };
 
       div.style.transition = "0.2s";
-      div.onmouseover = () => div.style.transform = "translateY(-2px)";
-      div.onmouseout = () => div.style.transform = "none";
+      div.onmouseover = () => (div.style.transform = "translateY(-2px)");
+      div.onmouseout = () => (div.style.transform = "none");
 
       div.innerHTML = `
         <h3>${escapeHTML(data.title || "")}</h3>
@@ -127,29 +128,37 @@ window.saveProfile = async () => {
   const user = auth.currentUser;
   if (!user) return;
 
+  const profileInfo = { email: user.email, isAdmin: user.email === ADMIN_EMAIL };
+  const nicknameIssue = getNicknameIssue(name, profileInfo);
+  if (nicknameIssue) {
+    alert(nicknameIssue);
+    return;
+  }
+
   try {
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      isAdmin: user.email === ADMIN_EMAIL,
-      username: name || "User",
-      status: status || "온라인",
-      createdAt: new Date()
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        email: user.email,
+        isAdmin: user.email === ADMIN_EMAIL,
+        username: isAllowedNickname(name, profileInfo) ? name : "User",
+        status: status || "Inactive",
+        createdAt: new Date(),
+      },
+      { merge: true },
+    );
 
     await updateProfile(user, {
-      displayName: name
+      displayName: name,
     });
 
     document.getElementById("username").innerHTML =
-      renderNameWithBadge(name || "User", {
-        email: user.email,
-        isAdmin: user.email === ADMIN_EMAIL
-      });
-    document.getElementById("status").innerText = status || "온라인";
+      renderNameWithBadge(name || "User", profileInfo);
+    document.getElementById("status").innerText = status || "Inactive";
 
     closeModal();
   } catch (e) {
     console.error("PROFILE SAVE ERROR:", e);
-    alert("저장 실패");
+    alert("Profile save failed.");
   }
 };

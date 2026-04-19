@@ -23,6 +23,15 @@ service cloud.firestore {
         && request.resource.data.uid == resource.data.uid;
     }
 
+    function isCommentReactionToggle() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["likes", "dislikes"])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.content == resource.data.content;
+    }
+
     function roomIsParticipant() {
       return signedIn()
         && (
@@ -41,7 +50,76 @@ service cloud.firestore {
         "state"
       ])
       && request.resource.data.hostId == resource.data.hostId
+      && request.resource.data.hostName == resource.data.hostName
       && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function roomIsStale() {
+      return resource.data.updatedAt is timestamp
+        && resource.data.updatedAt < request.time - duration.value(5, 'm');
+    }
+
+    function roomHostUpdateAllowed() {
+      return signedIn()
+        && request.auth.uid == resource.data.hostId
+        && roomCommonFieldsValid()
+        && request.resource.data.guestId == resource.data.guestId
+        && request.resource.data.guestName == resource.data.guestName
+        && request.resource.data.winner == resource.data.winner
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["status", "updatedAt"])
+        && (
+          (
+            resource.data.status == "waiting"
+            && request.resource.data.status in ["waiting", "cancelled"]
+          )
+        );
+    }
+
+    function roomGuestJoinAllowed() {
+      return signedIn()
+        && resource.data.status == "waiting"
+        && resource.data.guestId == null
+        && request.resource.data.status == "active"
+        && request.resource.data.guestId == request.auth.uid
+        && request.resource.data.guestName is string
+        && request.resource.data.hostId == resource.data.hostId
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["status", "guestId", "guestName", "updatedAt"]);
+    }
+
+    function roomActiveParticipantUpdateAllowed() {
+      return signedIn()
+        && resource.data.status == "active"
+        && roomCommonFieldsValid()
+        && request.resource.data.guestId == resource.data.guestId
+        && request.resource.data.guestName == resource.data.guestName
+        && (
+          (
+            request.resource.data.status == "active"
+            && request.resource.data.winner == resource.data.winner
+          )
+          ||
+          request.resource.data.status == "ended"
+        )
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["status", "state", "winner", "updatedAt"])
+        && (
+          request.auth.uid == resource.data.hostId
+          || request.auth.uid == resource.data.guestId
+        );
+    }
+
+    function roomDeleteAllowed() {
+      return signedIn()
+        && (
+          request.auth.uid == resource.data.hostId
+          || request.auth.uid == resource.data.guestId
+          || roomIsStale()
+          || isAdmin()
+        );
     }
 
     function minigameRoomData(roomId) {
@@ -102,7 +180,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll(["postId", "content", "uid"]);
 
-      allow update: if signedIn();
+      allow update: if isCommentReactionToggle();
 
       allow delete: if signedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
@@ -190,30 +268,12 @@ service cloud.firestore {
       allow update: if signedIn()
         && roomCommonFieldsValid()
         && (
-          // Host can cancel waiting rooms or continue playing in active rooms.
-          (
-            request.auth.uid == resource.data.hostId
-          )
-          ||
-          // Guest can join a waiting room.
-          (
-            resource.data.status == "waiting"
-            && resource.data.guestId == null
-            && request.resource.data.status == "active"
-            && request.resource.data.guestId == request.auth.uid
-          )
-          ||
-          // Active games can be updated by either participant.
-          (
-            resource.data.status == "active"
-            && (
-              request.auth.uid == resource.data.hostId
-              || request.auth.uid == resource.data.guestId
-            )
-          )
+          roomHostUpdateAllowed()
+          || roomGuestJoinAllowed()
+          || roomActiveParticipantUpdateAllowed()
         );
 
-      allow delete: if isAdmin();
+      allow delete: if roomDeleteAllowed();
     }
 
     // =====================
@@ -240,6 +300,8 @@ service cloud.firestore {
       allow read: if signedIn()
         && (
           resource.data.status == "waiting"
+          || resource.data.status == "active"
+          || resource.data.status == "ended"
           || resource.data.hostId == request.auth.uid
           || resource.data.guestId == request.auth.uid
         );
@@ -253,30 +315,27 @@ service cloud.firestore {
       allow update: if signedIn()
         && roomCommonFieldsValid()
         && (
-          request.auth.uid == resource.data.hostId
-          || (
-            resource.data.status == "waiting"
-            && resource.data.guestId == null
-            && request.resource.data.status == "active"
-            && request.resource.data.guestId == request.auth.uid
-          )
-          || (
-            resource.data.status == "active"
-            && (
-              request.auth.uid == resource.data.hostId
-              || request.auth.uid == resource.data.guestId
-            )
-          )
+          roomHostUpdateAllowed()
+          || roomGuestJoinAllowed()
+          || roomActiveParticipantUpdateAllowed()
         );
 
-      allow delete: if isAdmin();
+      allow delete: if roomDeleteAllowed();
     }
 
     // =====================
     // GOMOKU MATCHMAKING
     // =====================
     match /gomokuMatchmaking/{docId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+        && request.auth.uid == request.resource.data.hostId
+        && request.resource.data.keys().hasOnly(["roomId", "hostId", "updatedAt"])
+        && request.resource.data.roomId is string;
+
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.hostId;
     }
 
     // =====================
@@ -285,11 +344,17 @@ service cloud.firestore {
     match /gomokuRooms/{roomId}/chat/{messageId} {
       allow read: if signedIn()
         && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
         );
 
       allow create: if signedIn()
+        && (
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
+        )
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.text is string

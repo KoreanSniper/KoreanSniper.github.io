@@ -1,21 +1,22 @@
 import { auth, db } from "./firebase.js";
 import { ADMIN_EMAIL, escapeHTML, renderNameWithBadge } from "./util.js";
+import { getNicknameIssue, isAllowedNickname } from "../../nickname-policy.js";
 
 import {
   onAuthStateChanged,
   signOut,
-  updateProfile
+  updateProfile,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 import {
+  collection,
   doc,
   getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
   getDocs,
-  orderBy
+  orderBy,
+  query,
+  setDoc,
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const urlUid = new URLSearchParams(location.search).get("id");
@@ -36,30 +37,35 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   const targetUid = urlUid || user.uid;
-  document.getElementById("email").innerText =
-    targetUid === user.uid ? user.email : "-";
-
   const userRef = doc(db, "users", targetUid);
   const snap = await getDoc(userRef);
-
   let data = {};
+
   if (snap.exists()) {
     data = snap.data();
   }
 
-  document.getElementById("username").innerHTML = renderNameWithBadge(
-    data.username || "사용자",
-    {
-      email: data.email || (targetUid === user.uid ? user.email : ""),
-      isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL)
-    }
-  );
-  document.getElementById("status").innerText = data.status || "방문자";
+  document.getElementById("email").innerText =
+    targetUid === user.uid ? user.email : "-";
+
+  const username = data.username || "User";
+  const profileInfo = {
+    email: data.email || (targetUid === user.uid ? user.email : ""),
+    isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL),
+  };
+
+  document.getElementById("username").innerHTML =
+    renderNameWithBadge(username, profileInfo);
+
+  document.getElementById("status").innerText = data.status || "Inactive";
+
   document.getElementById("created").innerText =
     data.createdAt?.toDate?.().toLocaleString() || "-";
 
   if (targetUid !== user.uid) {
-    document.querySelectorAll(".profile-actions").forEach((el) => (el.style.display = "none"));
+    document
+      .querySelectorAll(".profile-actions")
+      .forEach((el) => (el.style.display = "none"));
   }
 
   loadUserPosts(targetUid);
@@ -75,13 +81,13 @@ async function loadUserPosts(uid) {
     const q = query(
       collection(db, "posts"),
       where("uid", "==", uid),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      box.innerHTML = "<p>작성한 글이 없습니다.</p>";
+      box.innerHTML = "<p>No posts yet.</p>";
       document.getElementById("posts").innerText = "0";
       return;
     }
@@ -92,12 +98,14 @@ async function loadUserPosts(uid) {
       const div = document.createElement("div");
       div.className = "card";
       div.style.cursor = "pointer";
-      div.style.transition = "0.2s";
-      div.onmouseover = () => (div.style.transform = "translateY(-2px)");
-      div.onmouseout = () => (div.style.transform = "none");
+
       div.onclick = () => {
         location.href = `post.html?id=${d.id}`;
       };
+
+      div.style.transition = "0.2s";
+      div.onmouseover = () => (div.style.transform = "translateY(-2px)");
+      div.onmouseout = () => (div.style.transform = "none");
 
       div.innerHTML = `
         <h3>${escapeHTML(data.title || "")}</h3>
@@ -120,28 +128,37 @@ window.saveProfile = async () => {
   const user = auth.currentUser;
   if (!user) return;
 
+  const profileInfo = { email: user.email, isAdmin: user.email === ADMIN_EMAIL };
+  const nicknameIssue = getNicknameIssue(name, profileInfo);
+  if (nicknameIssue) {
+    alert(nicknameIssue);
+    return;
+  }
+
   try {
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      isAdmin: user.email === ADMIN_EMAIL,
-      username: name || "User",
-      status: status || "방문자",
-      createdAt: new Date()
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        email: user.email,
+        isAdmin: user.email === ADMIN_EMAIL,
+        username: isAllowedNickname(name, profileInfo) ? name : "User",
+        status: status || "Inactive",
+        createdAt: new Date(),
+      },
+      { merge: true },
+    );
 
     await updateProfile(user, {
-      displayName: name
+      displayName: name,
     });
 
-    document.getElementById("username").innerHTML = renderNameWithBadge(name || "User", {
-      email: user.email,
-      isAdmin: user.email === ADMIN_EMAIL
-    });
-    document.getElementById("status").innerText = status || "방문자";
+    document.getElementById("username").innerHTML =
+      renderNameWithBadge(name || "User", profileInfo);
+    document.getElementById("status").innerText = status || "Inactive";
 
     closeModal();
   } catch (e) {
     console.error("PROFILE SAVE ERROR:", e);
-    alert("저장에 실패했습니다.");
+    alert("Profile save failed.");
   }
 };

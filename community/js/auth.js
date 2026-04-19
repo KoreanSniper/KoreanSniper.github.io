@@ -1,108 +1,117 @@
 import { auth, db } from "./firebase.js";
 import { ADMIN_EMAIL } from "./util.js";
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
   signOut,
-  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc,
-  setDoc
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-window.signup = async () => {
-  const email = document.getElementById("email").value.trim();
-  const pw = document.getElementById("password").value;
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
 
-  try {
-    const userCred = await createUserWithEmailAndPassword(auth, email, pw);
-    const user = userCred.user;
+function setButtonDisplay(id, visible) {
+  const el = document.getElementById(id);
+  if (el?.style) el.style.display = visible ? "block" : "none";
+}
 
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
+async function syncVerifiedUser(user) {
+  await setDoc(
+    doc(db, "users", user.uid),
+    {
+      email: user.email || "",
+      displayName: user.displayName || "",
+      photoURL: user.photoURL || "",
       isAdmin: user.email === ADMIN_EMAIL,
-      createdAt: new Date()
-    });
+      emailVerified: true,
+      lastLoginAt: new Date(),
+      provider: "google",
+    },
+    { merge: true },
+  );
+}
 
-    alert("회원가입 완료");
-  } catch (e) {
-    if (e.code === "auth/email-already-in-use") {
-      alert("이미 존재하는 이메일입니다");
-    } else if (e.code === "auth/invalid-email") {
-      alert("이메일 형식이 올바르지 않습니다");
-    } else if (e.code === "auth/weak-password") {
-      alert("비밀번호는 6자 이상이어야 합니다");
-    } else {
-      alert("회원가입 실패: " + e.message);
-    }
-  }
-};
-
-window.login = async () => {
-  const email = document.getElementById("email").value.trim();
-  const pw = document.getElementById("password").value;
-
+async function signInWithGoogle() {
   try {
-    await signInWithEmailAndPassword(auth, email, pw);
-    alert("로그인 완료");
-  } catch (e) {
-    if (e.code === "auth/user-not-found") {
-      alert("존재하지 않는 계정입니다");
-    } else if (e.code === "auth/wrong-password") {
-      alert("비밀번호가 틀렸습니다");
-    } else {
-      alert("로그인 실패: " + e.message);
+    const result = await signInWithPopup(auth, provider);
+    await syncVerifiedUser(result.user);
+  } catch (error) {
+    console.error("GOOGLE SIGN-IN ERROR:", error);
+    if (error.code === "auth/popup-closed-by-user") {
+      alert("로그인 창이 닫혔습니다.");
+      return;
     }
+    if (error.code === "auth/cancelled-popup-request") {
+      return;
+    }
+    alert("Google 로그인에 실패했습니다: " + error.message);
   }
-};
+}
 
-window.logout = async () => {
+async function logout() {
   try {
     await signOut(auth);
-    alert("로그아웃 완료");
-  } catch (e) {
-    alert("로그아웃 실패: " + e.message);
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
+    alert("로그아웃에 실패했습니다.");
   }
-};
+}
 
-window.goProfile = () => {
-  window.location.href = "./profile.html";
-};
+function renderSignedOutUI() {
+  const authDiv = document.getElementById("auth");
+  if (!authDiv) return;
 
-window.goWrite = () => {
-  window.location.href = "./write.html";
-};
+  authDiv.textContent = "";
 
-window.back = () => {
-  window.history.back();
-};
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "googleLoginBtn";
+  button.textContent = "Google로 로그인";
+  button.addEventListener("click", signInWithGoogle);
+  authDiv.appendChild(button);
+}
 
-onAuthStateChanged(auth, (user) => {
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const profileBtn = document.getElementById("profileBtn");
-  const writeBtn = document.getElementById("writeBtn");
-  const backBtn = document.getElementById("backBtn");
+function renderSignedInUI(user) {
+  const authDiv = document.getElementById("auth");
+  if (!authDiv) return;
 
+  authDiv.textContent = "";
+
+  const span = document.createElement("span");
+  span.textContent = user.displayName || user.email || "Google 계정";
+  authDiv.append(span, document.createTextNode(" "));
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "logoutBtn";
+  button.textContent = "로그아웃";
+  button.addEventListener("click", logout);
+  authDiv.appendChild(button);
+}
+
+window.login = signInWithGoogle;
+window.logout = logout;
+
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      isAdmin: user.email === ADMIN_EMAIL
-    }, { merge: true }).catch((error) => {
-      console.error("USER SYNC ERROR:", error);
-    });
-
-    loginBtn?.style && (loginBtn.style.display = "none");
-    logoutBtn?.style && (logoutBtn.style.display = "block");
-    profileBtn?.style && (profileBtn.style.display = "block");
-    writeBtn?.style && (writeBtn.style.display = "block");
-    backBtn?.style && (backBtn.style.display = "block");
-  } else {
-    loginBtn?.style && (loginBtn.style.display = "block");
-    logoutBtn?.style && (logoutBtn.style.display = "none");
-    profileBtn?.style && (profileBtn.style.display = "none");
-    writeBtn?.style && (writeBtn.style.display = "none");
-    backBtn?.style && (backBtn.style.display = "none");
+    await syncVerifiedUser(user);
+    setButtonDisplay("loginBtn", false);
+    setButtonDisplay("logoutBtn", true);
+    setButtonDisplay("profileBtn", true);
+    setButtonDisplay("writeBtn", true);
+    setButtonDisplay("backBtn", true);
+    renderSignedInUI(user);
+    return;
   }
+
+  setButtonDisplay("loginBtn", true);
+  setButtonDisplay("logoutBtn", false);
+  setButtonDisplay("profileBtn", false);
+  setButtonDisplay("writeBtn", false);
+  setButtonDisplay("backBtn", false);
+  renderSignedOutUI();
 });

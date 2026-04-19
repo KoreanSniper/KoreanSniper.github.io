@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import { escapeHTML, renderNameWithBadge } from "./util.js";
 
 import {
@@ -9,12 +9,27 @@ import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const postsDiv = document.getElementById("posts");
 const userCache = {};
+let authReady = false;
+let currentUser = null;
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user || null;
+  authReady = true;
+  loadPosts();
+});
 
 async function getUserInfo(uid) {
   if (!uid) {
+    return { name: "User", email: "", isAdmin: false };
+  }
+
+  if (!currentUser) {
     return { name: "User", email: "", isAdmin: false };
   }
 
@@ -43,6 +58,8 @@ async function getUserInfo(uid) {
 
 async function loadPosts() {
   postsDiv.innerHTML = "";
+
+  if (!authReady) return;
 
   try {
     const q = query(

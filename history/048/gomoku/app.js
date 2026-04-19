@@ -1,6 +1,9 @@
-﻿let auth = null;
+﻿import { getNicknameIssue, isAllowedNickname, getSafeNickname } from "../nickname-policy.js";
+
+let auth = null;
 let db = null;
 let onAuthStateChanged = null;
+let signOut = null;
 let addDoc = null;
 let collection = null;
 let doc = null;
@@ -72,6 +75,10 @@ const ui = {
   matchStatus: null,
   playerName: null,
   aiDifficulty: null,
+  accountStatus: null,
+  accountLogoutBtn: null,
+  lobbyStatus: null,
+  lobbyList: null,
   turnHistory: null,
   chatMessages: null,
   chatInput: null,
@@ -96,6 +103,8 @@ const ui = {
   notice: "",
     chatUnsubscribe: null,
     chatLog: [],
+    lobbyUnsubscribe: null,
+    lobbyRooms: [],
   };
 
   let historyVersion = 0;
@@ -105,6 +114,7 @@ let authUser = null;
 let authReady = false;
 let gameState = createInitialState();
 const aiMemoryCache = new Map();
+let lastValidPlayerName = "";
 
 const FIVE_LINES = buildFiveLines();
 
@@ -125,6 +135,7 @@ async function ensureFirebase() {
       auth = firebaseModule.auth;
       db = firebaseModule.db;
       onAuthStateChanged = authModule.onAuthStateChanged;
+      signOut = authModule.signOut;
       signInAnonymously = authModule.signInAnonymously;
       addDoc = firestoreModule.addDoc;
       collection = firestoreModule.collection;
@@ -144,7 +155,7 @@ async function ensureFirebase() {
 
       if (!firebaseListenerInstalled) {
         firebaseListenerInstalled = true;
-        onAuthStateChanged(auth, handleAuthStateChanged);
+onAuthStateChanged(auth, handleAuthStateChanged);
       }
 
       firebaseUnavailable = false;
@@ -166,6 +177,13 @@ function handleAuthStateChanged(user) {
   authUser = user;
   authReady = true;
   syncNameField();
+  updateAccountPanel();
+  if (authUser) {
+    subscribeLobbyRooms();
+  } else {
+    clearLobbyListener();
+    session.lobbyRooms = [];
+  }
   renderAll();
 }
 
@@ -179,6 +197,8 @@ window.copyBoardPositions = copyBoardPositions;
 window.sendChatMessage = sendChatMessage;
 window.activateRailgun = activateRailgun;
 window.choosePushDirection = choosePushDirection;
+window.logoutCurrentAccount = logoutCurrentAccount;
+window.watchGomokuRoom = watchGomokuRoom;
 
 document.addEventListener("DOMContentLoaded", () => {
   ui.board = document.getElementById("board");
@@ -188,6 +208,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ui.matchStatus = document.getElementById("matchStatus");
   ui.playerName = document.getElementById("playerName");
   ui.aiDifficulty = document.getElementById("aiDifficulty");
+  ui.accountStatus = document.getElementById("accountStatus");
+  ui.accountLogoutBtn = document.getElementById("accountLogoutBtn");
+  ui.lobbyStatus = document.getElementById("lobbyStatus");
+  ui.lobbyList = document.getElementById("lobbyList");
   ui.turnHistory = document.getElementById("turnHistory");
   ui.chatMessages = document.getElementById("chatMessages");
   ui.chatInput = document.getElementById("chatInput");
@@ -198,9 +222,29 @@ document.addEventListener("DOMContentLoaded", () => {
   ui.directionGrid = document.getElementById("directionGrid");
 
   if (ui.playerName) {
-    ui.playerName.value = localStorage.getItem(NAME_KEY) || "";
+    const savedName = localStorage.getItem(NAME_KEY) || "";
+    ui.playerName.value = isAllowedNickname(savedName, authUser || {}) ? savedName : "";
+    if (!isAllowedNickname(savedName, authUser || {})) {
+      localStorage.removeItem(NAME_KEY);
+    }
+    lastValidPlayerName = ui.playerName.value.trim();
     ui.playerName.addEventListener("input", () => {
-      localStorage.setItem(NAME_KEY, ui.playerName.value.trim());
+      const typed = ui.playerName.value.trim();
+      if (!typed) {
+        lastValidPlayerName = "";
+        localStorage.removeItem(NAME_KEY);
+        renderAll();
+        return;
+      }
+
+      if (!isAllowedNickname(typed, authUser || {})) {
+        ui.playerName.value = lastValidPlayerName;
+        setNotice(getNicknameIssue(typed, authUser || {}) || "닉네임을 사용할 수 없습니다.");
+        return;
+      }
+
+      lastValidPlayerName = typed;
+      localStorage.setItem(NAME_KEY, typed);
       renderAll();
     });
   }
@@ -224,7 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  updateAccountPanel();
   void ensureFirebase();
+  subscribeLobbyRooms();
   ensureAiTicker();
   startLocalAIMatch("오목 전장을 불러오는 중입니다.");
 });
@@ -425,7 +471,7 @@ function getGuestId() {
 
 function getDisplayName() {
   const typed = ui.playerName?.value.trim() || localStorage.getItem(NAME_KEY)?.trim();
-  if (typed) return typed;
+  if (typed && isAllowedNickname(typed, authUser || {})) return getSafeNickname(typed, "User", authUser || {});
   if (authUser?.email) return authUser.email.split("@")[0];
   return getGuestId();
 }
@@ -490,6 +536,28 @@ function syncNameField() {
   if (ui.playerName && !ui.playerName.value.trim()) ui.playerName.placeholder = getDisplayName();
 }
 
+function updateAccountPanel() {
+  const signedIn = Boolean(authUser);
+  if (ui.accountStatus) {
+    ui.accountStatus.textContent = signedIn
+      ? `로그인됨: ${authUser.email || "계정"}`
+      : "회원가입이나 로그인으로 닉네임을 더 안전하게 쓸 수 있습니다.";
+  }
+  if (ui.accountLogoutBtn?.style) {
+    ui.accountLogoutBtn.style.display = signedIn ? "inline-flex" : "none";
+  }
+}
+
+async function logoutCurrentAccount() {
+  if (!signOut) return;
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("ACCOUNT LOGOUT ERROR:", error);
+    alert("로그아웃에 실패했습니다.");
+  }
+}
+
 function setNotice(message) {
   session.notice = message || "";
   renderAll();
@@ -515,6 +583,13 @@ function clearOnlineListeners() {
   if (session.chatUnsubscribe) {
     session.chatUnsubscribe();
     session.chatUnsubscribe = null;
+  }
+}
+
+function clearLobbyListener() {
+  if (session.lobbyUnsubscribe) {
+    session.lobbyUnsubscribe();
+    session.lobbyUnsubscribe = null;
   }
 }
 
@@ -1776,6 +1851,7 @@ function applyMoveToState(state, move, silent = false, skipAnnotation = false) {
 }
 
   function canInteractWithCell(index) {
+    if (session.mode === "spectator") return false;
     if (session.mode === "online" && session.roomStatus !== "active") return false;
     if (gameState.gameOver) return false;
     if (gameState.pendingMovePush) {
@@ -2031,6 +2107,59 @@ async function startOnlineMatch() {
   }
 }
 
+async function watchGomokuRoom(roomId) {
+  if (!roomId) return;
+  stopOnlineSession();
+  stopAiTimer();
+  session.mode = "spectator";
+  session.notice = "관전 모드로 전환했습니다.";
+  gameState = createInitialState();
+  renderAll();
+
+  if (!(await ensureFirebase())) {
+    session.notice = "관전하려면 인터넷 연결이 필요합니다.";
+    renderAll();
+    return;
+  }
+
+  const hasIdentity = await ensureOnlineIdentity();
+  if (!hasIdentity) {
+    session.notice = "관전을 위해 로그인 또는 익명 로그인이 필요합니다.";
+    renderAll();
+    return;
+  }
+
+  try {
+    const roomRef = doc(db, ROOM_COLLECTION, roomId);
+    const snap = await getDoc(roomRef);
+    if (!snap.exists()) {
+      session.notice = "해당 경기를 찾을 수 없습니다.";
+      renderAll();
+      return;
+    }
+
+    const room = snap.data();
+    session.roomRef = roomRef;
+    session.roomId = snap.id;
+    session.host = false;
+    session.seat = null;
+    session.roomStatus = room.status;
+    gameState = normalizeState(room.state);
+    if (room.status === "ended") {
+      gameState.gameOver = true;
+      gameState.winner = room.winner || gameState.winner;
+    }
+    attachRoomListener(roomRef, false);
+    subscribeRoomChat(roomRef);
+    session.notice = `방 ${roomId.slice(0, 6)}를 관전 중입니다.`;
+    renderAll();
+  } catch (error) {
+    console.error(error);
+    session.notice = "관전할 수 없습니다.";
+    renderAll();
+  }
+}
+
 async function tryJoinRoom(roomRef, identity) {
   let joined = false;
   try {
@@ -2146,10 +2275,92 @@ function chatRoomRef(roomRef = session.roomRef) {
   return collection(db, ROOM_COLLECTION, roomRef.id, "chat");
 }
 
+function roomCanChat() {
+  return session.roomRef && ["active", "ended"].includes(session.roomStatus);
+}
+
+function renderLobby() {
+  if (!ui.lobbyList) return;
+
+  const rooms = Array.isArray(session.lobbyRooms) ? session.lobbyRooms : [];
+  if (ui.lobbyStatus) {
+    ui.lobbyStatus.textContent = rooms.length
+      ? `관전 가능한 진행 중 경기 ${rooms.length}개`
+      : "현재 진행 중인 오목 경기가 없습니다.";
+  }
+
+  if (!rooms.length) {
+    ui.lobbyList.innerHTML = '<div class="lobby-empty">진행 중인 경기가 생기면 여기서 바로 관전할 수 있습니다.</div>';
+    return;
+  }
+
+  ui.lobbyList.innerHTML = rooms.map((room) => {
+    const roomLabel = room.id ? room.id.slice(0, 6) : "-";
+    const host = room.hostName || "호스트";
+    const guest = room.guestName || "대기 중";
+    const updated = room.updatedAt?.toDate?.()?.toLocaleTimeString?.() || "";
+    return `
+      <div class="lobby-card">
+        <div class="lobby-card-top">
+          <div class="lobby-card-title">
+            <strong>방 ${escapeHtml(roomLabel)}</strong>
+            <div class="lobby-card-meta">
+              <span>호스트: ${escapeHtml(host)}</span>
+              <span>상대: ${escapeHtml(guest)}</span>
+            </div>
+          </div>
+          <span class="turn-chip">${escapeHtml(room.status || "active")}</span>
+        </div>
+        <div class="lobby-card-actions">
+          <button type="button" onclick="watchGomokuRoom(${JSON.stringify(room.id || "")})">관전</button>
+        </div>
+        ${updated ? `<div class="panel-hint">업데이트 ${escapeHtml(updated)}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+function subscribeLobbyRooms() {
+  if (session.lobbyUnsubscribe) {
+    session.lobbyUnsubscribe();
+    session.lobbyUnsubscribe = null;
+  }
+  if (!(authReady && authUser) || !db) {
+    session.lobbyRooms = [];
+    renderLobby();
+    return;
+  }
+
+  const lobbyQuery = query(
+    collection(db, ROOM_COLLECTION),
+    where("status", "==", "active"),
+    limit(12),
+  );
+
+  session.lobbyUnsubscribe = onSnapshot(lobbyQuery, (snapshot) => {
+    session.lobbyRooms = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => {
+        const left = a.updatedAt?.toMillis?.() || 0;
+        const right = b.updatedAt?.toMillis?.() || 0;
+        return right - left;
+      });
+    renderLobby();
+  }, (error) => {
+    console.error("LOBBY SNAPSHOT ERROR:", error);
+    session.lobbyRooms = [];
+    renderLobby();
+  });
+}
+
 function renderChat() {
-  const active = session.mode === "online" && session.roomStatus === "active";
+  const active = session.mode === "online" || session.mode === "spectator"
+    ? roomCanChat()
+    : false;
   if (ui.chatStatus) {
-    if (session.mode !== "online") ui.chatStatus.textContent = "온라인 대전에서만 채팅을 사용할 수 있습니다.";
+    if (session.mode === "spectator") ui.chatStatus.textContent = session.roomStatus === "ended"
+      ? "관전 중인 경기입니다. 종료 후에도 채팅할 수 있습니다."
+      : "관전 중인 경기입니다. 채팅할 수 있습니다.";
+    else if (session.mode !== "online") ui.chatStatus.textContent = "온라인 대전에서만 채팅을 사용할 수 있습니다.";
     else if (session.roomStatus === "waiting") ui.chatStatus.textContent = "상대가 들어오면 채팅을 사용할 수 있습니다.";
     else if (session.roomStatus === "active") ui.chatStatus.textContent = "온라인 대전 중입니다.";
     else if (session.roomStatus === "ended") ui.chatStatus.textContent = "대전이 끝났습니다.";
@@ -2188,7 +2399,7 @@ function subscribeRoomChat(roomRef) {
 }
 
 async function sendChatMessage() {
-  if (session.mode !== "online" || session.roomStatus !== "active" || !session.roomRef) return;
+  if (!roomCanChat()) return;
   if (!(await ensureFirebase())) return;
   const text = ui.chatInput?.value.trim();
   if (!text) return;
@@ -2211,11 +2422,19 @@ async function sendChatMessage() {
 
 function renderRoomInfo() {
   if (!ui.roomInfo) return;
-  const modeLabel = session.mode === "online" ? "온라인" : session.mode === "ai" ? "AI" : "대기";
+  const modeLabel = session.mode === "online"
+    ? "온라인"
+    : session.mode === "spectator"
+      ? "관전"
+      : session.mode === "ai"
+        ? "AI"
+        : "대기";
   const room = session.roomId ? session.roomId.slice(0, 6) : "-";
   const extra = session.mode === "online"
     ? `${session.host ? "호스트" : "참가자"} | ${session.roomStatus || "대기"}`
-    : `AI 난이도 ${getAiDifficultyLabel()}`;
+    : session.mode === "spectator"
+      ? `관전 | ${session.roomStatus || "대기"}`
+      : `AI 난이도 ${getAiDifficultyLabel()}`;
   ui.roomInfo.innerHTML = [
     `<span class="turn-chip"><strong>모드</strong> ${modeLabel}</span>`,
     `<span class="turn-chip">${room}</span>`,
@@ -2348,6 +2567,11 @@ function renderModeHelp() {
     else if (session.roomStatus === "ended") ui.matchStatus.textContent = "온라인 대전이 끝났습니다.";
     else if (session.roomStatus === "cancelled") ui.matchStatus.textContent = "매칭이 취소되었습니다.";
     else ui.matchStatus.textContent = "온라인 룸을 준비 중입니다.";
+    return;
+  }
+  if (session.mode === "spectator") {
+    if (session.roomStatus === "ended") ui.matchStatus.textContent = "경기가 끝난 뒤에도 관전과 채팅을 이어갈 수 있습니다.";
+    else ui.matchStatus.textContent = "현재 진행 중인 경기를 관전하고 있습니다.";
     return;
   }
   if (session.mode === "ai") {
@@ -2492,3 +2716,4 @@ document.addEventListener("visibilitychange", () => {
     scheduleAiTurn();
   }
 });
+

@@ -23,6 +23,15 @@ service cloud.firestore {
         && request.resource.data.uid == resource.data.uid;
     }
 
+    function isCommentReactionToggle() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(["likes", "dislikes"])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.content == resource.data.content;
+    }
+
     function roomIsParticipant() {
       return signedIn()
         && (
@@ -171,7 +180,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll(["postId", "content", "uid"]);
 
-      allow update: if signedIn();
+      allow update: if isCommentReactionToggle();
 
       allow delete: if signedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
@@ -291,6 +300,8 @@ service cloud.firestore {
       allow read: if signedIn()
         && (
           resource.data.status == "waiting"
+          || resource.data.status == "active"
+          || resource.data.status == "ended"
           || resource.data.hostId == request.auth.uid
           || resource.data.guestId == request.auth.uid
         );
@@ -333,11 +344,17 @@ service cloud.firestore {
     match /gomokuRooms/{roomId}/chat/{messageId} {
       allow read: if signedIn()
         && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
         );
 
       allow create: if signedIn()
+        && (
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
+          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
+        )
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.text is string
