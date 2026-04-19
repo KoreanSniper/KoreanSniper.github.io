@@ -26,6 +26,8 @@ const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE;
 const WIN_LENGTH = 5;
 const ROOM_COLLECTION = "gomokuRooms";
 const AI_MEMORY_COLLECTION = "gomokuAiMemory";
+const MATCHMAKING_COLLECTION = "gomokuMatchmaking";
+const MATCHMAKING_DOC = "global";
 const MATCH_WAIT_MS = 12000;
 const AI_DELAY_MS = 450;
 const AI_SEAT = "O";
@@ -1898,7 +1900,6 @@ function startLocalAIMatch(message = "AI 대전 준비 완료") {
 }
 
 async function startOnlineMatch() {
-  // 전역 매칭 문서 대신, 대기 중인 방을 먼저 찾아보고 없으면 새 방을 만든다.
   stopOnlineSession();
   stopAiTimer();
   session.mode = "online";
@@ -1943,6 +1944,12 @@ async function startOnlineMatch() {
       updatedAt: serverTimestamp(),
       state: normalizeState(createInitialState()),
     });
+
+    await setDoc(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
+      roomId: roomRef.id,
+      hostId: identity.id,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
 
     session.roomRef = roomRef;
     session.roomId = roomRef.id;

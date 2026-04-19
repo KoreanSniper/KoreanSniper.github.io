@@ -1920,74 +1920,81 @@ async function startOnlineMatch() {
 
   const identity = await ensureIdentity();
   try {
-    const match = await runTransaction(db, async (tx) => {
-      const matchRef = doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC);
-      const matchSnap = await tx.get(matchRef);
-      const matchData = matchSnap.exists() ? matchSnap.data() : null;
+    const waitingQuery = query(collection(db, ROOM_COLLECTION), where("status", "==", "waiting"), limit(10));
+    const waitingSnapshot = await getDocs(waitingQuery);
 
-      if (matchData?.roomId) {
-        const pendingRoomRef = doc(db, ROOM_COLLECTION, matchData.roomId);
-        const pendingRoomSnap = await tx.get(pendingRoomRef);
-        if (pendingRoomSnap.exists()) {
-          const pendingRoom = pendingRoomSnap.data();
-          if (pendingRoom.status === "waiting" && pendingRoom.hostId !== identity.id) {
-            tx.update(pendingRoomRef, {
-              status: "active",
-              guestId: identity.id,
-              guestName: identity.name,
-              updatedAt: serverTimestamp(),
-            });
-            tx.set(matchRef, {
-              roomId: null,
-              hostId: null,
-              updatedAt: serverTimestamp(),
-            }, { merge: true });
-            return { roomId: pendingRoomRef.id, seat: "O", host: false, status: "active" };
-          }
-        }
+    for (const roomDoc of waitingSnapshot.docs) {
+      const joined = await tryJoinRoom(roomDoc.ref, identity);
+      if (joined) {
+        attachRoomListener(roomDoc.ref, false);
+        subscribeRoomChat(roomDoc.ref);
+        setNotice(`방 ${roomDoc.id.slice(0, 6)}에 합류했습니다.`);
+        renderAll();
+        return;
       }
+    }
 
-      const roomRef = doc(collection(db, ROOM_COLLECTION));
-      tx.set(roomRef, {
-        status: "waiting",
-        hostId: identity.id,
-        hostName: identity.name,
-        guestId: null,
-        guestName: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        state: normalizeState(createInitialState()),
-      });
-      tx.set(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
-        roomId: roomRef.id,
-        hostId: identity.id,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      return { roomId: roomRef.id, seat: "X", host: true, status: "waiting" };
+    const roomRef = await addDoc(collection(db, ROOM_COLLECTION), {
+      status: "waiting",
+      hostId: identity.id,
+      hostName: identity.name,
+      guestId: null,
+      guestName: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      state: normalizeState(createInitialState()),
     });
 
-    if (!match?.roomId) {
-      startLocalAIMatch("온라인 매칭에 실패했습니다. 다시 시도해 주세요.");
-      return;
-    }
+    await setDoc(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
+      roomId: roomRef.id,
+      hostId: identity.id,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
 
-    session.roomRef = doc(db, ROOM_COLLECTION, match.roomId);
-    session.roomId = match.roomId;
-    session.seat = match.seat;
-    session.host = match.host;
-    session.roomStatus = match.status;
-    attachRoomListener(session.roomRef, match.host);
-    if (match.host) {
-      session.timeoutId = setTimeout(() => fallbackToAiIfWaiting(session.roomRef), MATCH_WAIT_MS);
-      setNotice(`방 ${session.roomId.slice(0, 6)}를 만들었습니다. 상대를 기다립니다.`);
-    } else {
-      setNotice(`방 ${session.roomId.slice(0, 6)}에 합류했습니다.`);
-    }
+    session.roomRef = roomRef;
+    session.roomId = roomRef.id;
+    session.seat = "X";
+    session.host = true;
+    session.roomStatus = "waiting";
+    attachRoomListener(roomRef, true);
+    subscribeRoomChat(roomRef);
+    session.timeoutId = setTimeout(() => fallbackToAiIfWaiting(roomRef), MATCH_WAIT_MS);
+    setNotice(`방 ${roomRef.id.slice(0, 6)}를 만들었습니다. 상대를 기다립니다.`);
     renderAll();
   } catch (error) {
     console.error(error);
     startLocalAIMatch("온라인 매칭 중 문제가 생겼습니다.");
   }
+}
+
+async function tryJoinRoom(roomRef, identity) {
+  let joined = false;
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(roomRef);
+      if (!snap.exists()) return;
+      const room = snap.data();
+      if (room.status !== "waiting" || room.guestId || room.hostId === identity.id) return;
+      tx.update(roomRef, {
+        status: "active",
+        guestId: identity.id,
+        guestName: identity.name,
+        updatedAt: serverTimestamp(),
+      });
+      joined = true;
+    });
+  } catch (error) {
+    console.error(error);
+  }
+
+  if (joined) {
+    session.roomRef = roomRef;
+    session.roomId = roomRef.id;
+    session.seat = "O";
+    session.host = false;
+    session.roomStatus = "active";
+  }
+  return joined;
 }
 
 function attachRoomListener(roomRef, hostCreated) {
