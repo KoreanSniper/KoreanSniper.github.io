@@ -564,16 +564,12 @@ async function deleteOnlineRoom(roomRef = session.roomRef) {
 }
 
 async function clearMatchmakingIfRoom(roomId) {
-  if (!roomId || !(await ensureFirebase())) return;
+  if (!roomId || !session.host || !(await ensureFirebase())) return;
   try {
     const matchRef = doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC);
     const matchSnap = await getDoc(matchRef);
     if (!matchSnap.exists() || matchSnap.data()?.roomId !== roomId) return;
-    await setDoc(matchRef, {
-      roomId: null,
-      hostId: null,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    await deleteDoc(matchRef);
   } catch (error) {
     console.error(error);
   }
