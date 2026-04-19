@@ -1,5 +1,5 @@
 import { auth, db } from "./firebase.js";
-import { ADMIN_EMAIL, renderNameWithBadge } from "./util.js";
+import { ADMIN_EMAIL, escapeHTML, renderNameWithBadge } from "./util.js";
 
 import {
   onAuthStateChanged,
@@ -17,7 +17,6 @@ import {
   getDocs,
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 const urlUid = new URLSearchParams(location.search).get("id");
 
 window.logout = async () => {
@@ -108,8 +107,8 @@ async function loadUserPosts(uid) {
       div.onmouseout = () => div.style.transform = "none";
 
       div.innerHTML = `
-        <h3>${data.title || ""}</h3>
-        <p>${(data.content || "").slice(0, 100)}</p>
+        <h3>${escapeHTML(data.title || "")}</h3>
+        <p>${escapeHTML((data.content || "").slice(0, 100))}</p>
       `;
 
       box.appendChild(div);
