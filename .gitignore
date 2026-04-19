@@ -6,6 +6,7 @@ node_modules/
 dist/
 release/
 release-*/
+.vscode/
 _portable-stage/
 *.tmp.exe
 
