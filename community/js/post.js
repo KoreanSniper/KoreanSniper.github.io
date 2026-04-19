@@ -1,4 +1,5 @@
 import { db, auth } from "./firebase.js";
+import { renderNameWithBadge } from "./util.js";
 import {
   onSnapshot,
   doc,
@@ -16,43 +17,41 @@ import { deletePost } from "./delete.js";
 
 const postId = new URLSearchParams(location.search).get("id");
 
-// =====================
-// 🚨 안전 가드
-// =====================
 if (!postId) {
   alert("잘못된 접근");
   location.href = "index.html";
 }
 
-// =====================
-// 👤 유저 캐시 (성능 최적화)
-// =====================
 const userCache = {};
 
-async function getUsername(uid) {
-  if (!uid) return "익명";
+async function getUserInfo(uid) {
+  if (!uid) {
+    return { name: "User", email: "", isAdmin: false };
+  }
 
-  // 캐시 있으면 바로 반환
   if (userCache[uid]) return userCache[uid];
 
   try {
     const snap = await getDoc(doc(db, "users", uid));
 
     if (snap.exists()) {
-      const name = snap.data().username || "사용자";
-      userCache[uid] = name;
-      return name;
+      const data = snap.data();
+      const info = {
+        name: data.username || "User",
+        email: data.email || "",
+        isAdmin: Boolean(data.isAdmin)
+      };
+
+      userCache[uid] = info;
+      return info;
     }
   } catch (e) {
     console.error("USER LOAD ERROR:", e);
   }
 
-  return "익명";
+  return { name: "User", email: "", isAdmin: false };
 }
 
-// =====================
-// 📌 게시글 로딩
-// =====================
 async function loadPost() {
   try {
     const snap = await getDoc(doc(db, "posts", postId));
@@ -63,26 +62,21 @@ async function loadPost() {
     }
 
     const data = snap.data();
-
     document.getElementById("title").innerText = data.title || "";
     document.getElementById("content").innerText = data.content || "";
 
-    // 🔥 작성자 이름 가져오기
-    const username = await getUsername(data.uid);
+    const userInfo = await getUserInfo(data.uid);
     const authorEl = document.getElementById("author");
-    authorEl.innerText = username;
+    authorEl.innerHTML = renderNameWithBadge(userInfo.name, userInfo);
     authorEl.style.cursor = "pointer";
-
     authorEl.onclick = () => {
       location.href = `profile.html?id=${data.uid}`;
     };
 
-    // 🔥 본인 글이면 수정 버튼 표시
     const user = auth.currentUser;
     if (user && user.uid === data.uid) {
       document.getElementById("editBtn").style.display = "inline-block";
     }
-
   } catch (e) {
     console.error("POST LOAD ERROR:", e);
   }
@@ -90,9 +84,6 @@ async function loadPost() {
 
 loadPost();
 
-// =====================
-// 💬 댓글 렌더 (닉네임 적용)
-// =====================
 async function renderComments(comments) {
   const box = document.getElementById("comments");
   if (!box) return;
@@ -103,36 +94,52 @@ async function renderComments(comments) {
     const div = document.createElement("div");
     div.className = "card";
 
-    const username = await getUsername(c.uid);
+    const userInfo = await getUserInfo(c.uid);
 
-    div.innerHTML = `
-      <b class="userLink" data-uid="${c.uid}">${username}</b>
-      <p>${c.content || ""}</p>
-
-      👍 ${c.likes || 0}
-      👎 ${c.dislikes || 0}
-
-      <button class="likeC">👍</button>
-      <button class="dislikeC">👎</button>
-      <button class="reportC">🚨 신고</button>
-      <button class="deleteC">🗑 삭제</button>
-
-    `;
-    div.querySelector(".userLink").onclick = () => {
+    const author = document.createElement("b");
+    author.className = "userLink";
+    author.dataset.uid = c.uid || "";
+    author.innerHTML = renderNameWithBadge(userInfo.name, userInfo);
+    author.style.cursor = "pointer";
+    author.onclick = () => {
       location.href = `profile.html?id=${c.uid}`;
     };
-    div.querySelector(".likeC").onclick = () => likeComment(c.id);
-    div.querySelector(".dislikeC").onclick = () => dislikeComment(c.id);
-    div.querySelector(".reportC").onclick = () => reportComment(c.id);
-    div.querySelector(".deleteC").onclick = () => deleteComment(c.id);
 
+    const content = document.createElement("p");
+    content.textContent = c.content || "";
+
+    const meta = document.createElement("p");
+    meta.textContent = `👍 ${c.likes || 0}  👎 ${c.dislikes || 0}`;
+
+    const likeButton = document.createElement("button");
+    likeButton.className = "likeC";
+    likeButton.type = "button";
+    likeButton.textContent = "좋아요";
+    likeButton.onclick = () => likeComment(c.id);
+
+    const dislikeButton = document.createElement("button");
+    dislikeButton.className = "dislikeC";
+    dislikeButton.type = "button";
+    dislikeButton.textContent = "싫어요";
+    dislikeButton.onclick = () => dislikeComment(c.id);
+
+    const reportButton = document.createElement("button");
+    reportButton.className = "reportC";
+    reportButton.type = "button";
+    reportButton.textContent = "신고";
+    reportButton.onclick = () => reportComment(c.id);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "deleteC";
+    deleteButton.type = "button";
+    deleteButton.textContent = "삭제";
+    deleteButton.onclick = () => deleteComment(c.id);
+
+    div.append(author, content, meta, likeButton, dislikeButton, reportButton, deleteButton);
     box.appendChild(div);
   }
 }
 
-// =====================
-// 🔥 좋아요 실시간 반영
-// =====================
 function listenPost(postId) {
   const ref = doc(db, "posts", postId);
 
@@ -140,24 +147,15 @@ function listenPost(postId) {
     if (!snap.exists()) return;
 
     const data = snap.data();
-
     document.getElementById("likes").innerText = data.likes || 0;
     document.getElementById("dislikes").innerText = data.dislikes || 0;
   });
 }
 
 listenPost(postId);
-
-// =====================
-// 🔥 댓글 실시간
-// =====================
 listenComments(postId, renderComments);
 
-// =====================
-// 🎯 버튼 이벤트
-// =====================
 window.addEventListener("DOMContentLoaded", () => {
-
   const likeBtn = document.getElementById("likeBtn");
   const dislikeBtn = document.getElementById("dislikeBtn");
   const reportBtn = document.getElementById("reportBtn");
@@ -171,11 +169,9 @@ window.addEventListener("DOMContentLoaded", () => {
   if (deleteBtn) deleteBtn.onclick = () => deletePost(postId);
   if (commentBtn) commentBtn.onclick = () => addComment(postId);
 
-  // ✏️ 수정 버튼
   if (editBtn) {
     editBtn.onclick = () => {
       location.href = `edit.html?id=${postId}`;
     };
   }
-
 });

@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { escapeHTML } from "./util.js";
+import { escapeHTML, renderNameWithBadge } from "./util.js";
 
 import {
   collection,
@@ -11,12 +11,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const postsDiv = document.getElementById("posts");
-
-// 🔥 유저 캐시
 const userCache = {};
 
-async function getUsername(uid) {
-  if (!uid) return "익명";
+async function getUserInfo(uid) {
+  if (!uid) {
+    return { name: "User", email: "", isAdmin: false };
+  }
 
   if (userCache[uid]) return userCache[uid];
 
@@ -24,15 +24,21 @@ async function getUsername(uid) {
     const snap = await getDoc(doc(db, "users", uid));
 
     if (snap.exists()) {
-      const name = snap.data().username || "사용자";
-      userCache[uid] = name;
-      return name;
+      const data = snap.data();
+      const info = {
+        name: data.username || "User",
+        email: data.email || "",
+        isAdmin: Boolean(data.isAdmin)
+      };
+
+      userCache[uid] = info;
+      return info;
     }
   } catch (e) {
     console.error("USER LOAD ERROR:", e);
   }
 
-  return "익명";
+  return { name: "User", email: "", isAdmin: false };
 }
 
 async function loadPosts() {
@@ -57,18 +63,16 @@ async function loadPosts() {
         window.location.href = `post.html?id=${d.id}`;
       };
 
-      // 🔥 작성자 이름 가져오기
-      const username = await getUsername(data.uid);
+      const userInfo = await getUserInfo(data.uid);
 
       post.innerHTML = `
         <h1>${escapeHTML(data.title)}</h1>
-        <p style="color:#949ba4; font-size:13px;">👤 ${escapeHTML(username)}</p>
+        <p style="color:#949ba4; font-size:13px;">👤 ${renderNameWithBadge(userInfo.name, userInfo)}</p>
         <p>${escapeHTML(data.content)}</p>
       `;
 
       postsDiv.appendChild(post);
     }
-
   } catch (e) {
     console.error("게시글 로딩 실패:", e);
   }

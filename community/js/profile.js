@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase.js";
+import { ADMIN_EMAIL, renderNameWithBadge } from "./util.js";
 
 import {
   onAuthStateChanged,
@@ -17,12 +18,8 @@ import {
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 URL에서 uid 가져오기
 const urlUid = new URLSearchParams(location.search).get("id");
 
-// ======================
-// 로그아웃 / 홈
-// ======================
 window.logout = async () => {
   await signOut(auth);
   location.href = "./index.html";
@@ -32,9 +29,6 @@ window.goHome = () => {
   location.href = "./index.html";
 };
 
-// ======================
-// 🔥 프로필 로드
-// ======================
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     location.href = "./index.html";
@@ -42,45 +36,41 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   const targetUid = urlUid || user.uid;
-
-  // 🔥 이메일 (내 프로필만 표시)
-  document.getElementById("email").innerText =
-    (targetUid === user.uid) ? user.email : "-";
-
   const userRef = doc(db, "users", targetUid);
   const snap = await getDoc(userRef);
+  let data = {};
 
   if (snap.exists()) {
-    const data = snap.data();
-
-    document.getElementById("username").innerText =
-      data.username || "사용자";
-
-    document.getElementById("status").innerText =
-      data.status || "온라인";
-
-    document.getElementById("created").innerText =
-      data.createdAt?.toDate?.().toLocaleString() || "-";
-
+    data = snap.data();
+    document.getElementById("email").innerText =
+      targetUid === user.uid ? user.email : "-";
   } else {
-    document.getElementById("username").innerText = "사용자";
-    document.getElementById("status").innerText = "-";
-    document.getElementById("created").innerText = "-";
+    document.getElementById("email").innerText = targetUid === user.uid ? user.email : "-";
   }
 
-  // 🔥 내 프로필 아니면 수정 버튼 숨김
+  const username = data.username || "User";
+  const profileInfo = {
+    email: data.email || (targetUid === user.uid ? user.email : ""),
+    isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL)
+  };
+
+  document.getElementById("username").innerHTML =
+    renderNameWithBadge(username, profileInfo);
+
+  document.getElementById("status").innerText =
+    data.status || "온라인";
+
+  document.getElementById("created").innerText =
+    data.createdAt?.toDate?.().toLocaleString() || "-";
+
   if (targetUid !== user.uid) {
     document.querySelectorAll(".profile-actions")
       .forEach(el => el.style.display = "none");
   }
 
-  // 🔥 유저 게시글 로드
   loadUserPosts(targetUid);
 });
 
-// ======================
-// 🔥 유저 게시글
-// ======================
 async function loadUserPosts(uid) {
   const box = document.getElementById("userPosts");
   if (!box) return;
@@ -97,7 +87,7 @@ async function loadUserPosts(uid) {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      box.innerHTML = "<p>작성한 글 없음</p>";
+      box.innerHTML = "<p>작성한 글이 없음</p>";
       document.getElementById("posts").innerText = "0";
       return;
     }
@@ -109,12 +99,10 @@ async function loadUserPosts(uid) {
       div.className = "card";
       div.style.cursor = "pointer";
 
-      // 🔥 클릭 이동
       div.onclick = () => {
         location.href = `post.html?id=${d.id}`;
       };
 
-      // 🔥 hover 효과
       div.style.transition = "0.2s";
       div.onmouseover = () => div.style.transform = "translateY(-2px)";
       div.onmouseout = () => div.style.transform = "none";
@@ -127,17 +115,12 @@ async function loadUserPosts(uid) {
       box.appendChild(div);
     });
 
-    // 🔥 게시글 수 표시
     document.getElementById("posts").innerText = snap.size;
-
   } catch (e) {
     console.error("USER POSTS ERROR:", e);
   }
 }
 
-// ======================
-// 🔥 프로필 저장
-// ======================
 window.saveProfile = async () => {
   const name = document.getElementById("editName").value.trim();
   const status = document.getElementById("editStatus").value.trim();
@@ -147,20 +130,25 @@ window.saveProfile = async () => {
 
   try {
     await setDoc(doc(db, "users", user.uid), {
-      username: name || "사용자",
+      email: user.email,
+      isAdmin: user.email === ADMIN_EMAIL,
+      username: name || "User",
       status: status || "온라인",
-      createdAt: new Date() // 🔥 최초 저장 시만 의미 있음
+      createdAt: new Date()
     }, { merge: true });
 
     await updateProfile(user, {
       displayName: name
     });
 
-    document.getElementById("username").innerText = name;
-    document.getElementById("status").innerText = status;
+    document.getElementById("username").innerHTML =
+      renderNameWithBadge(name || "User", {
+        email: user.email,
+        isAdmin: user.email === ADMIN_EMAIL
+      });
+    document.getElementById("status").innerText = status || "온라인";
 
     closeModal();
-
   } catch (e) {
     console.error("PROFILE SAVE ERROR:", e);
     alert("저장 실패");

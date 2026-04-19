@@ -1,27 +1,31 @@
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+import { ADMIN_EMAIL } from "./util.js";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  doc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 회원가입
 window.signup = async () => {
-  const email = document.getElementById("email").value;
+  const email = document.getElementById("email").value.trim();
   const pw = document.getElementById("password").value;
 
   try {
     const userCred = await createUserWithEmailAndPassword(auth, email, pw);
     const user = userCred.user;
 
-    // 🔥 최소 데이터만 생성
     await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      isAdmin: user.email === ADMIN_EMAIL,
       createdAt: new Date()
     });
 
     alert("회원가입 완료");
-
   } catch (e) {
     if (e.code === "auth/email-already-in-use") {
       alert("이미 존재하는 이메일입니다");
@@ -35,9 +39,8 @@ window.signup = async () => {
   }
 };
 
-// 로그인
 window.login = async () => {
-  const email = document.getElementById("email").value;
+  const email = document.getElementById("email").value.trim();
   const pw = document.getElementById("password").value;
 
   try {
@@ -54,33 +57,27 @@ window.login = async () => {
   }
 };
 
-// 로그아웃
 window.logout = async () => {
   try {
     await signOut(auth);
     alert("로그아웃 완료");
   } catch (e) {
     alert("로그아웃 실패: " + e.message);
-  } 
+  }
 };
 
-// 프로필 이동
 window.goProfile = () => {
   window.location.href = "./profile.html";
 };
 
-// 글쓰기 이동
 window.goWrite = () => {
   window.location.href = "./write.html";
 };
 
-// 글쓰기 이동
 window.back = () => {
   window.history.back();
 };
 
-
-// UI 상태 업데이트
 onAuthStateChanged(auth, (user) => {
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
@@ -89,6 +86,13 @@ onAuthStateChanged(auth, (user) => {
   const backBtn = document.getElementById("backBtn");
 
   if (user) {
+    setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      isAdmin: user.email === ADMIN_EMAIL
+    }, { merge: true }).catch((error) => {
+      console.error("USER SYNC ERROR:", error);
+    });
+
     loginBtn?.style && (loginBtn.style.display = "none");
     logoutBtn?.style && (logoutBtn.style.display = "block");
     profileBtn?.style && (profileBtn.style.display = "block");

@@ -457,6 +457,23 @@ textarea {
   font-weight: 800;
 }
 
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(35, 192, 109, 1), rgba(19, 144, 77, 1));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+  box-shadow: 0 8px 16px rgba(35, 192, 109, 0.22);
+}
+
 .profile-actions {
   margin-top: 16px;
 }
