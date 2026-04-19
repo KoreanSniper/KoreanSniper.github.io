@@ -4,6 +4,7 @@ let onAuthStateChanged = null;
 let addDoc = null;
 let collection = null;
 let doc = null;
+let deleteDoc = null;
 let getDoc = null;
 let getDocs = null;
 let signInAnonymously = null;
@@ -128,6 +129,7 @@ async function ensureFirebase() {
       addDoc = firestoreModule.addDoc;
       collection = firestoreModule.collection;
       doc = firestoreModule.doc;
+      deleteDoc = firestoreModule.deleteDoc;
       getDoc = firestoreModule.getDoc;
       getDocs = firestoreModule.getDocs;
       limit = firestoreModule.limit;
@@ -501,8 +503,7 @@ function stopAiTimer() {
   session.aiThinking = false;
 }
 
-function stopOnlineSession() {
-  stopAiTimer();
+function clearOnlineListeners() {
   if (session.timeoutId) {
     clearTimeout(session.timeoutId);
     session.timeoutId = null;
@@ -515,6 +516,11 @@ function stopOnlineSession() {
     session.chatUnsubscribe();
     session.chatUnsubscribe = null;
   }
+}
+
+function stopOnlineSession() {
+  stopAiTimer();
+  clearOnlineListeners();
   session.roomRef = null;
   session.roomId = null;
   session.seat = null;
@@ -524,8 +530,54 @@ function stopOnlineSession() {
   session.chatLog = [];
 }
 
-function goHome() {
+function markOpponentLeftWin(message = "상대가 나가서 승리했습니다.") {
+  stopAiTimer();
+  clearOnlineListeners();
+  session.roomRef = null;
+  session.roomId = null;
+  session.host = false;
+  session.roomStatus = "ended";
+  session.notice = message;
+  gameState.gameOver = true;
+  gameState.winner = session.seat || gameState.winner;
+  gameState.drawReason = "";
+  gameState.lastEventLines = [message];
+  gameState.lastEvent = message;
+  renderAll();
+}
+
+async function deleteOnlineRoom(roomRef = session.roomRef) {
+  if (!roomRef) return;
+  if (!(await ensureFirebase())) return;
+  try {
+    await deleteDoc(roomRef);
+  } catch (error) {
+    console.error(error);
+  }
+  try {
+    await setDoc(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
+      roomId: null,
+      hostId: null,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function leaveOnlineRoom() {
+  const roomRef = session.roomRef;
+  clearOnlineListeners();
+  await deleteOnlineRoom(roomRef);
   stopOnlineSession();
+}
+
+async function goHome() {
+  if (session.mode === "online" && session.roomRef) {
+    await leaveOnlineRoom();
+  } else {
+    stopOnlineSession();
+  }
   gameState = createInitialState();
   session.mode = "idle";
   window.location.href = "../minigame/index.html";
@@ -2001,7 +2053,7 @@ function attachRoomListener(roomRef, hostCreated) {
   if (session.unsubscribe) session.unsubscribe();
   session.unsubscribe = onSnapshot(roomRef, (snap) => {
     if (!snap.exists()) {
-      if (session.mode === "online") startLocalAIMatch("상대가 떠나 AI 대전으로 전환되었습니다.");
+      if (session.mode === "online") markOpponentLeftWin();
       return;
     }
 
@@ -2049,13 +2101,7 @@ async function fallbackToAiIfWaiting(roomRef) {
 
 async function cancelOnlineMatch() {
   if (session.mode !== "online") return;
-  if (session.roomRef && session.roomStatus === "waiting") {
-    try {
-      await updateDoc(session.roomRef, { status: "cancelled", updatedAt: serverTimestamp() });
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  await leaveOnlineRoom();
   startLocalAIMatch("온라인 매칭을 취소하고 AI 대전으로 돌아갑니다.");
 }
 
@@ -2419,7 +2465,5 @@ document.addEventListener("visibilitychange", () => {
     scheduleAiTurn();
   }
 });
-
-
 
 
