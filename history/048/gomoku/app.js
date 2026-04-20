@@ -1860,6 +1860,10 @@ function applyMoveToState(state, move, silent = false, skipAnnotation = false) {
   return applyPlacementToState(state, move.to, silent, skipAnnotation);
 }
 
+function isNotYourTurnError(error) {
+  return error instanceof Error && error.message === "not-your-turn";
+}
+
   function canInteractWithCell(index) {
     if (session.mode === "spectator") return false;
     if (session.mode === "online" && session.roomStatus !== "active") return false;
@@ -1901,6 +1905,11 @@ async function commitOnlineMove(move) {
   const seat = session.seat;
   if (!roomRef || !seat) return;
 
+  if (gameState.gameOver || gameState.currentPlayer !== seat) {
+    setNotice("아직 내 차례가 아닙니다.");
+    return;
+  }
+
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(roomRef);
@@ -1921,6 +1930,10 @@ async function commitOnlineMove(move) {
     });
     if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
+    if (isNotYourTurnError(error)) {
+      setNotice("아직 내 차례가 아닙니다.");
+      return;
+    }
     console.error(error);
     setNotice("온라인에서 수를 반영하지 못했습니다.");
   }
@@ -1940,6 +1953,12 @@ async function commitOnlineRailgun() {
   const roomRef = session.roomRef;
   const seat = session.seat;
   if (!roomRef || !seat) return;
+
+  if (gameState.gameOver || gameState.currentPlayer !== seat) {
+    setNotice("아직 내 차례가 아닙니다.");
+    return;
+  }
+
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(roomRef);
@@ -1958,6 +1977,10 @@ async function commitOnlineRailgun() {
     });
     if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
+    if (isNotYourTurnError(error)) {
+      setNotice("아직 내 차례가 아닙니다.");
+      return;
+    }
     console.error(error);
     setNotice("레일건을 사용할 수 없습니다.");
   }
@@ -1978,6 +2001,12 @@ async function commitOnlinePushDirection(directionName) {
   const roomRef = session.roomRef;
   const seat = session.seat;
   if (!roomRef || !seat) return;
+
+  if (gameState.gameOver || gameState.currentPlayer !== seat || !gameState.pendingMovePush) {
+    setNotice("아직 내 차례가 아닙니다.");
+    return;
+  }
+
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(roomRef);
@@ -1996,6 +2025,10 @@ async function commitOnlinePushDirection(directionName) {
     });
     if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
+    if (isNotYourTurnError(error)) {
+      setNotice("아직 내 차례가 아닙니다.");
+      return;
+    }
     console.error(error);
     setNotice("무브칸 방향을 적용하지 못했습니다.");
   }
