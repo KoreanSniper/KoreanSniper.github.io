@@ -48,6 +48,7 @@ const RAILGUN_LINE_LENGTH = 5;
 const PUSH_LIMIT = 2;
 const AI_CHUNK_SIZE = 8;
 const AI_MEMORY_MIN_USES = 2;
+const ADMIN_EMAIL = "seoul2linejh@gmail.com";
 
 const DIRECTIONS = [
   { key: "N", dr: -1, dc: 0, label: "↑" },
@@ -100,6 +101,7 @@ const ui = {
   aiThinking: false,
   roomStatus: null,
   notice: "",
+  roomCleanupTimer: null,
     chatUnsubscribe: null,
     chatLog: [],
     lobbyUnsubscribe: null,
@@ -574,6 +576,10 @@ function isRoomStale(room, maxAgeMs = 5 * 60 * 1000) {
 function stopOnlineSession() {
   stopAiTimer();
   clearOnlineListeners();
+  if (session.roomCleanupTimer) {
+    clearTimeout(session.roomCleanupTimer);
+    session.roomCleanupTimer = null;
+  }
   session.roomRef = null;
   session.roomId = null;
   session.seat = null;
@@ -610,8 +616,19 @@ async function deleteOnlineRoom(roomRef = session.roomRef) {
   await clearMatchmakingIfRoom(roomRef.id);
 }
 
+function scheduleRoomCleanup(roomRef = session.roomRef, delayMs = 2500) {
+  if (!roomRef || !session.roomRef || session.roomRef.id !== roomRef.id) return;
+  if (session.roomCleanupTimer) {
+    clearTimeout(session.roomCleanupTimer);
+  }
+  session.roomCleanupTimer = setTimeout(() => {
+    session.roomCleanupTimer = null;
+    void deleteOnlineRoom(roomRef);
+  }, delayMs);
+}
+
 async function clearMatchmakingIfRoom(roomId) {
-  if (!roomId || !session.host || !(await ensureFirebase())) return;
+  if (!roomId || !(await ensureFirebase())) return;
   try {
     const matchRef = doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC);
     const matchSnap = await getDoc(matchRef);
@@ -628,6 +645,23 @@ async function leaveOnlineRoom() {
   await deleteOnlineRoom(roomRef);
   stopOnlineSession();
 }
+
+async function leaveOnlineRoomBestEffort() {
+  if (session.mode !== "online" || !session.roomRef) return;
+  try {
+    await leaveOnlineRoom();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+window.addEventListener("pagehide", () => {
+  void leaveOnlineRoomBestEffort();
+});
+
+window.addEventListener("beforeunload", () => {
+  void leaveOnlineRoomBestEffort();
+});
 
 async function goHome() {
   if (session.mode === "online" && session.roomRef) {
@@ -650,6 +684,10 @@ function getAiDifficultyLabel() {
   if (difficulty === "easy") return "쉬움";
   if (difficulty === "hard") return "최강";
   return "보통";
+}
+
+function isAdminViewer() {
+  return authUser?.email === ADMIN_EMAIL;
 }
 
 function buildFiveLines() {
@@ -1881,6 +1919,7 @@ async function commitOnlineMove(move) {
         updatedAt: serverTimestamp(),
       });
     });
+    if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
     console.error(error);
     setNotice("온라인에서 수를 반영하지 못했습니다.");
@@ -1917,6 +1956,7 @@ async function commitOnlineRailgun() {
         updatedAt: serverTimestamp(),
       });
     });
+    if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
     console.error(error);
     setNotice("레일건을 사용할 수 없습니다.");
@@ -1954,6 +1994,7 @@ async function commitOnlinePushDirection(directionName) {
         updatedAt: serverTimestamp(),
       });
     });
+    if (gameState.gameOver) scheduleRoomCleanup(roomRef);
   } catch (error) {
     console.error(error);
     setNotice("무브칸 방향을 적용하지 못했습니다.");
@@ -2208,6 +2249,7 @@ function attachRoomListener(roomRef, hostCreated) {
       gameState = normalizeState(room.state);
       gameState.gameOver = true;
       gameState.winner = room.winner || gameState.winner;
+      scheduleRoomCleanup(roomRef);
     } else if (room.status === "cancelled" && session.mode === "online") {
       startLocalAIMatch("상대가 없어서 AI 대전으로 전환되었습니다.");
       return;
@@ -2311,6 +2353,26 @@ function renderLobby() {
     button.textContent = "관전";
     button.addEventListener("click", () => watchGomokuRoom(room.id || ""));
     actions.appendChild(button);
+
+    if (isAdminViewer()) {
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "btn-secondary";
+      deleteButton.textContent = "삭제";
+      deleteButton.addEventListener("click", async () => {
+        const roomId = room.id || "";
+        if (!roomId) return;
+        if (!confirm(`방 ${roomLabel}을 삭제할까요?`)) return;
+        try {
+          await deleteOnlineRoom(doc(db, ROOM_COLLECTION, roomId));
+          renderLobby();
+        } catch (error) {
+          console.error(error);
+          alert("방 삭제에 실패했습니다.");
+        }
+      });
+      actions.appendChild(deleteButton);
+    }
 
     card.append(top, actions);
 
