@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 // Station and line data processing
 const stationList = Object.keys(stations).map(name => ({
     id: name,
@@ -305,11 +306,11 @@ function buildRoutePath(stationNames) {
 
 // UI and interaction functions
 function setResult(message, emphasize = false) {
-    resultBox.innerHTML = emphasize ? `<strong>${message}</strong>` : message;
+    resultBox.textContent = message;
 }
 
 function setRegion(message, emphasize = false) {
-    regionBox.innerHTML = emphasize ? `<strong>${message}</strong>` : message;
+    regionBox.textContent = message;
 }
 
 function applyLineFocus() {
@@ -945,3 +946,4 @@ updateVisibility();
 clearHighlights();
 updateLineGroupState();
 update();
+

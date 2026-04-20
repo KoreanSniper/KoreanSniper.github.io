@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
 import { ADMIN_EMAIL } from "./util.js";
 import {
@@ -115,3 +116,4 @@ onAuthStateChanged(auth, async (user) => {
   setButtonDisplay("backBtn", false);
   renderSignedOutUI();
 });
+

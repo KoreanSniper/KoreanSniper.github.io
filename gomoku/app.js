@@ -1,4 +1,5 @@
-﻿import { getNicknameIssue, isAllowedNickname, getSafeNickname } from "../nickname-policy.js";
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
+import { getNicknameIssue, isAllowedNickname, getSafeNickname } from "../nickname-policy.js";
 
 let auth = null;
 let db = null;
@@ -10,7 +11,6 @@ let doc = null;
 let deleteDoc = null;
 let getDoc = null;
 let getDocs = null;
-let signInAnonymously = null;
 let limit = null;
 let orderBy = null;
 let onSnapshot = null;
@@ -23,7 +23,6 @@ let where = null;
 let firebaseLoadPromise = null;
 let firebaseUnavailable = false;
 let firebaseListenerInstalled = false;
-let authAnonymousPromise = null;
 
 const BOARD_SIZE = 11;
 const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE;
@@ -136,7 +135,6 @@ async function ensureFirebase() {
       db = firebaseModule.db;
       onAuthStateChanged = authModule.onAuthStateChanged;
       signOut = authModule.signOut;
-      signInAnonymously = authModule.signInAnonymously;
       addDoc = firestoreModule.addDoc;
       collection = firestoreModule.collection;
       doc = firestoreModule.doc;
@@ -503,32 +501,6 @@ async function ensureOnlineIdentity() {
       }, 25);
     });
   }
-  if (authUser) return true;
-  if (!signInAnonymously) return false;
-  if (!authAnonymousPromise) {
-    authReady = false;
-    authAnonymousPromise = (async () => {
-      try {
-        await signInAnonymously(auth);
-      } catch (error) {
-        console.warn("익명 로그인을 시작하지 못했습니다.", error);
-        authReady = true;
-      } finally {
-        authAnonymousPromise = null;
-      }
-    })();
-  }
-  await authAnonymousPromise;
-  if (!authReady) {
-    await new Promise((resolve) => {
-      const timer = setInterval(() => {
-        if (authReady) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, 25);
-    });
-  }
   return Boolean(authUser);
 }
 
@@ -541,7 +513,7 @@ function updateAccountPanel() {
   if (ui.accountStatus) {
     ui.accountStatus.textContent = signedIn
       ? `로그인됨: ${authUser.email || "계정"}`
-      : "회원가입이나 로그인으로 닉네임을 더 안전하게 쓸 수 있습니다.";
+      : "Google 로그인 후 닉네임과 온라인 대전을 더 안전하게 사용할 수 있습니다.";
   }
   if (ui.accountLogoutBtn?.style) {
     ui.accountLogoutBtn.style.display = signedIn ? "inline-flex" : "none";
@@ -2052,7 +2024,7 @@ async function startOnlineMatch() {
 
   const hasIdentity = await ensureOnlineIdentity();
   if (!hasIdentity) {
-    startLocalAIMatch("온라인 대전을 시작하려면 Firebase 로그인이나 익명 로그인이 필요합니다.");
+    startLocalAIMatch("온라인 대전을 시작하려면 Google 로그인이 필요합니다.");
     return;
   }
 
@@ -2124,7 +2096,7 @@ async function watchGomokuRoom(roomId) {
 
   const hasIdentity = await ensureOnlineIdentity();
   if (!hasIdentity) {
-    session.notice = "관전을 위해 로그인 또는 익명 로그인이 필요합니다.";
+    session.notice = "관전을 위해 Google 로그인이 필요합니다.";
     renderAll();
     return;
   }
@@ -2290,33 +2262,68 @@ function renderLobby() {
   }
 
   if (!rooms.length) {
-    ui.lobbyList.innerHTML = '<div class="lobby-empty">진행 중인 경기가 생기면 여기서 바로 관전할 수 있습니다.</div>';
+    const empty = document.createElement("div");
+    empty.className = "lobby-empty";
+    empty.textContent = "진행 중인 경기가 생기면 여기서 바로 관전할 수 있습니다.";
+    ui.lobbyList.replaceChildren(empty);
     return;
   }
 
-  ui.lobbyList.innerHTML = rooms.map((room) => {
+  const fragment = document.createDocumentFragment();
+  for (const room of rooms) {
     const roomLabel = room.id ? room.id.slice(0, 6) : "-";
     const host = room.hostName || "호스트";
     const guest = room.guestName || "대기 중";
     const updated = room.updatedAt?.toDate?.()?.toLocaleTimeString?.() || "";
-    return `
-      <div class="lobby-card">
-        <div class="lobby-card-top">
-          <div class="lobby-card-title">
-            <strong>방 ${escapeHtml(roomLabel)}</strong>
-            <div class="lobby-card-meta">
-              <span>호스트: ${escapeHtml(host)}</span>
-              <span>상대: ${escapeHtml(guest)}</span>
-            </div>
-          </div>
-          <span class="turn-chip">${escapeHtml(room.status || "active")}</span>
-        </div>
-        <div class="lobby-card-actions">
-          <button type="button" onclick="watchGomokuRoom(${JSON.stringify(room.id || "")})">관전</button>
-        </div>
-        ${updated ? `<div class="panel-hint">업데이트 ${escapeHtml(updated)}</div>` : ""}
-      </div>`;
-  }).join("");
+
+    const card = document.createElement("div");
+    card.className = "lobby-card";
+
+    const top = document.createElement("div");
+    top.className = "lobby-card-top";
+
+    const title = document.createElement("div");
+    title.className = "lobby-card-title";
+
+    const strong = document.createElement("strong");
+    strong.textContent = `방 ${roomLabel}`;
+
+    const meta = document.createElement("div");
+    meta.className = "lobby-card-meta";
+    const hostSpan = document.createElement("span");
+    hostSpan.textContent = `호스트: ${host}`;
+    const guestSpan = document.createElement("span");
+    guestSpan.textContent = `상대: ${guest}`;
+    meta.append(hostSpan, guestSpan);
+
+    title.append(strong, meta);
+
+    const status = document.createElement("span");
+    status.className = "turn-chip";
+    status.textContent = room.status || "active";
+
+    top.append(title, status);
+
+    const actions = document.createElement("div");
+    actions.className = "lobby-card-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "관전";
+    button.addEventListener("click", () => watchGomokuRoom(room.id || ""));
+    actions.appendChild(button);
+
+    card.append(top, actions);
+
+    if (updated) {
+      const hint = document.createElement("div");
+      hint.className = "panel-hint";
+      hint.textContent = `업데이트 ${updated}`;
+      card.appendChild(hint);
+    }
+
+    fragment.appendChild(card);
+  }
+  ui.lobbyList.replaceChildren(fragment);
 }
 
 function subscribeLobbyRooms() {
@@ -2370,16 +2377,29 @@ function renderChat() {
   if (!ui.chatMessages) return;
   const messages = Array.isArray(session.chatLog) ? session.chatLog : [];
   if (!messages.length) {
-    ui.chatMessages.innerHTML = '<span class="chat-empty">아직 채팅이 없습니다.</span>';
+    const empty = document.createElement("span");
+    empty.className = "chat-empty";
+    empty.textContent = "아직 채팅이 없습니다.";
+    ui.chatMessages.replaceChildren(empty);
   } else {
-    ui.chatMessages.innerHTML = messages.map((message) => {
+    const fragment = document.createDocumentFragment();
+    for (const message of messages) {
       const mine = message.uid && message.uid === (authUser?.uid || getGuestId());
-      return `
-        <div class="chat-item ${mine ? "mine" : ""}">
-          <div class="chat-meta">${escapeHtml(message.name || "익명")}</div>
-          <div class="chat-bubble">${escapeHtml(message.text || "")}</div>
-        </div>`;
-    }).join("");
+      const item = document.createElement("div");
+      item.className = `chat-item ${mine ? "mine" : ""}`;
+
+      const meta = document.createElement("div");
+      meta.className = "chat-meta";
+      meta.textContent = message.name || "익명";
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+      bubble.textContent = message.text || "";
+
+      item.append(meta, bubble);
+      fragment.appendChild(item);
+    }
+    ui.chatMessages.replaceChildren(fragment);
   }
 
   if (ui.chatInput) ui.chatInput.disabled = !active;
@@ -2435,11 +2455,20 @@ function renderRoomInfo() {
     : session.mode === "spectator"
       ? `관전 | ${session.roomStatus || "대기"}`
       : `AI 난이도 ${getAiDifficultyLabel()}`;
-  ui.roomInfo.innerHTML = [
-    `<span class="turn-chip"><strong>모드</strong> ${modeLabel}</span>`,
-    `<span class="turn-chip">${room}</span>`,
-    `<span class="turn-chip">${extra}</span>`,
-  ].join("");
+  const fragment = document.createDocumentFragment();
+  const chip1 = document.createElement("span");
+  chip1.className = "turn-chip";
+  const strong = document.createElement("strong");
+  strong.textContent = "모드";
+  chip1.append(strong, document.createTextNode(` ${modeLabel}`));
+  const chip2 = document.createElement("span");
+  chip2.className = "turn-chip";
+  chip2.textContent = room;
+  const chip3 = document.createElement("span");
+  chip3.className = "turn-chip";
+  chip3.textContent = extra;
+  fragment.append(chip1, chip2, chip3);
+  ui.roomInfo.replaceChildren(fragment);
 }
 
 function renderTurnInfo() {
@@ -2456,14 +2485,28 @@ function renderTurnInfo() {
   const pendingText = gameState.pendingMovePush
     ? `방향 선택 중: ${coordLabel(gameState.pendingMovePush.index)}`
     : "방향 선택 없음";
-  ui.turnInfo.innerHTML = [
-    `<span class="turn-chip"><strong>${turnText}</strong></span>`,
-    `<span class="turn-chip">${moveCount}</span>`,
-    `<span class="turn-chip">${moveTileText}</span>`,
-    `<span class="turn-chip">${bombTileText}</span>`,
-    `<span class="turn-chip">${railgunText}</span>`,
-    `<span class="turn-chip">${pendingText}</span>`,
-  ].join("");
+  const fragment = document.createDocumentFragment();
+  const values = [
+    { strong: turnText },
+    { text: moveCount },
+    { text: moveTileText },
+    { text: bombTileText },
+    { text: railgunText },
+    { text: pendingText },
+  ];
+  for (const value of values) {
+    const chip = document.createElement("span");
+    chip.className = "turn-chip";
+    if (value.strong) {
+      const bold = document.createElement("strong");
+      bold.textContent = value.strong;
+      chip.appendChild(bold);
+    } else {
+      chip.textContent = value.text;
+    }
+    fragment.appendChild(chip);
+  }
+  ui.turnInfo.replaceChildren(fragment);
 }
 
 function renderStatus() {
@@ -2492,7 +2535,14 @@ function renderStatus() {
     session.notice || "",
     ...gameState.lastEventLines,
   ].filter(Boolean);
-  ui.status.innerHTML = lines.map((line) => `<span class="status-line">${escapeHtml(line)}</span>`).join("");
+  const fragment = document.createDocumentFragment();
+  for (const line of lines) {
+    const span = document.createElement("span");
+    span.className = "status-line";
+    span.textContent = line;
+    fragment.appendChild(span);
+  }
+  ui.status.replaceChildren(fragment);
 }
 
 function renderHistory() {
@@ -2504,19 +2554,40 @@ function renderHistory() {
   if (lastRenderedHistoryKey === historyKey) return;
   lastRenderedHistoryKey = historyKey;
   if (!entries.length) {
-    ui.turnHistory.innerHTML = '<span class="history-empty">아직 기록이 없습니다.</span>';
+    const empty = document.createElement("span");
+    empty.className = "history-empty";
+    empty.textContent = "아직 기록이 없습니다.";
+    ui.turnHistory.replaceChildren(empty);
     return;
   }
-  ui.turnHistory.innerHTML = entries
-    .map((entry) => `
-      <div class="history-row">
-        <strong>${entry.turn}.</strong>
-        <div class="history-body">
-          <div class="history-main">${escapeHtml(entry.text)}</div>
-          <div class="history-meta">판정: <span class="turn-anno">${escapeHtml(entry.annotation || "")}</span></div>
-        </div>
-      </div>`)
-    .join("");
+  const fragment = document.createDocumentFragment();
+  for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = "history-row";
+
+    const strong = document.createElement("strong");
+    strong.textContent = `${entry.turn}.`;
+
+    const body = document.createElement("div");
+    body.className = "history-body";
+
+    const main = document.createElement("div");
+    main.className = "history-main";
+    main.textContent = entry.text;
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+    meta.append(document.createTextNode("판정: "));
+    const anno = document.createElement("span");
+    anno.className = "turn-anno";
+    anno.textContent = entry.annotation || "";
+    meta.appendChild(anno);
+
+    body.append(main, meta);
+    row.append(strong, body);
+    fragment.appendChild(row);
+  }
+  ui.turnHistory.replaceChildren(fragment);
 }
 
 function boardPositionSummary() {
@@ -2600,13 +2671,19 @@ function renderSpecialControls() {
   }
 
   if (!ui.directionGrid) return;
-  ui.directionGrid.innerHTML = "";
+  ui.directionGrid.replaceChildren();
   if (!gameState.pendingMovePush) {
-    ui.directionGrid.innerHTML = '<span class="panel-hint">무브칸에 돌을 두면 상대 돌을 한 칸 밀 수 있습니다.</span>';
+    const hint = document.createElement("span");
+    hint.className = "panel-hint";
+    hint.textContent = "무브칸에 돌을 두면 상대 돌을 한 칸 밀 수 있습니다.";
+    ui.directionGrid.appendChild(hint);
     return;
   }
   if (!isMyTurn) {
-    ui.directionGrid.innerHTML = '<span class="panel-hint">상대가 무브칸 방향을 고르는 중입니다.</span>';
+    const hint = document.createElement("span");
+    hint.className = "panel-hint";
+    hint.textContent = "상대가 무브칸 방향을 고르는 중입니다.";
+    ui.directionGrid.appendChild(hint);
     return;
   }
   for (const dir of DIRECTIONS) {
@@ -2621,7 +2698,7 @@ function renderSpecialControls() {
 
   function renderBoard() {
     if (!ui.board) return;
-    ui.board.innerHTML = "";
+    ui.board.replaceChildren();
     ui.board.classList.add("gomoku-board");
     const pendingOrigin = gameState.pendingMovePush ? rc(gameState.pendingMovePush.index) : null;
     const railgunPatterns = findRailgunPatterns(gameState, gameState.currentPlayer);
@@ -2652,28 +2729,50 @@ function renderSpecialControls() {
 
       const cell = document.createElement("div");
       cell.className = classes.join(" ");
-        const railgunLabel = railgunTargets.has(i) ? ` / 레일건 가능 (${railgunTargets.get(i).join(", ")})` : "";
-        cell.title = `${coordLabel(i)}${tileType === "move" ? " / 무브칸" : ""}${tileType === "bomb" ? " / 자폭칸" : ""}${railgunLabel}`;
+      const railgunLabel = railgunTargets.has(i) ? ` / 레일건 가능 (${railgunTargets.get(i).join(", ")})` : "";
+      cell.title = `${coordLabel(i)}${tileType === "move" ? " / 무브칸" : ""}${tileType === "bomb" ? " / 자폭칸" : ""}${railgunLabel}`;
       cell.addEventListener("click", () => handleCellClick(i));
 
       const mark = stone ? stone.owner : "";
-      const specialBadge = tileType === "move"
-        ? '<span class="tile-badge">MOVE</span>'
-        : tileType === "bomb"
-          ? '<span class="tile-badge">BOMB</span>'
-          : "";
-      const lockBadge = !stone && gameState.pushLocks?.[i] ? `<span class="tile-badge push-lock-badge">L${gameState.pushLocks[i]}</span>` : "";
-      const bombLabel = stone?.bombTurns ? `<span class="tile-badge bomb-count">B${stone.bombTurns}</span>` : "";
-        const railgunBadge = !stone && railgunTargets.has(i) ? `<span class="tile-badge railgun-badge">RG</span>` : "";
-      cell.innerHTML = `
-        <div class="cell-content">
-          <span class="cell-coord">${coordLabel(i)}</span>
-          <span class="cell-mark ${stone ? `piece-${stone.owner.toLowerCase()}` : ""}">${mark}</span>
-          ${specialBadge}
-          ${lockBadge}
-          ${railgunBadge}
-          ${bombLabel}
-        </div>`;
+      const content = document.createElement("div");
+      content.className = "cell-content";
+
+      const coord = document.createElement("span");
+      coord.className = "cell-coord";
+      coord.textContent = coordLabel(i);
+
+      const markSpan = document.createElement("span");
+      markSpan.className = `cell-mark ${stone ? `piece-${stone.owner.toLowerCase()}` : ""}`;
+      markSpan.textContent = mark;
+
+      content.append(coord, markSpan);
+
+      if (tileType === "move" || tileType === "bomb") {
+        const badge = document.createElement("span");
+        badge.className = "tile-badge";
+        badge.textContent = tileType === "move" ? "MOVE" : "BOMB";
+        content.appendChild(badge);
+      }
+      if (!stone && gameState.pushLocks?.[i]) {
+        const badge = document.createElement("span");
+        badge.className = "tile-badge push-lock-badge";
+        badge.textContent = `L${gameState.pushLocks[i]}`;
+        content.appendChild(badge);
+      }
+      if (!stone && railgunTargets.has(i)) {
+        const badge = document.createElement("span");
+        badge.className = "tile-badge railgun-badge";
+        badge.textContent = "RG";
+        content.appendChild(badge);
+      }
+      if (stone?.bombTurns) {
+        const badge = document.createElement("span");
+        badge.className = "tile-badge bomb-count";
+        badge.textContent = `B${stone.bombTurns}`;
+        content.appendChild(badge);
+      }
+
+      cell.appendChild(content);
 
       ui.board.appendChild(cell);
     }
@@ -2716,4 +2815,5 @@ document.addEventListener("visibilitychange", () => {
     scheduleAiTurn();
   }
 });
+
 

@@ -1,4 +1,5 @@
-﻿import { auth, db } from "../community/js/firebase.js";
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
+import { auth, db } from "../community/js/firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   addDoc,
@@ -1856,4 +1857,5 @@ function startDefaultGame() {
 }
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { renderAll(); scheduleAiTurn(); } });
+
 

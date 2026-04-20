@@ -1,9 +1,9 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
 import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
 import {
   collection,
   query,
@@ -12,9 +12,6 @@ import {
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ======================
-// 버튼 함수
-// ======================
 window.logout = async () => {
   await signOut(auth);
   location.href = "./index.html";
@@ -28,9 +25,6 @@ window.goProfile = () => {
   location.href = "./profile.html";
 };
 
-// ======================
-// 내 글 불러오기
-// ======================
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     location.href = "../index.html";
@@ -49,7 +43,9 @@ onAuthStateChanged(auth, async (user) => {
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      postList.innerHTML = "<p>작성한 글이 없습니다.</p>";
+      const empty = document.createElement("p");
+      empty.textContent = "작성한 글이 없습니다.";
+      postList.replaceChildren(empty);
       return;
     }
 
@@ -59,24 +55,29 @@ onAuthStateChanged(auth, async (user) => {
       const card = document.createElement("div");
       card.className = "card post";
 
-      card.innerHTML = `
-        <h1>${data.title || "제목 없음"}</h1>
-        <p>${data.content || ""}</p>
-        <div class="actions">
-          👍 ${data.likes || 0} · 💬 ${data.comments || 0}
-        </div>
-      `;
+      const title = document.createElement("h1");
+      title.textContent = data.title || "제목 없음";
 
-      // 상세 페이지 이동
+      const content = document.createElement("p");
+      content.textContent = data.content || "";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      actions.textContent = `👍 ${data.likes || 0} · 💬 ${data.comments || 0}`;
+
+      card.append(title, content, actions);
+
       card.onclick = () => {
         location.href = `./post.html?id=${doc.id}`;
       };
 
       postList.appendChild(card);
     });
-
   } catch (e) {
     console.error(e);
-    postList.innerHTML = "<p>글을 불러오는 중 오류 발생</p>";
+    const error = document.createElement("p");
+    error.textContent = "글을 불러오는 중 오류 발생";
+    postList.replaceChildren(error);
   }
 });
+

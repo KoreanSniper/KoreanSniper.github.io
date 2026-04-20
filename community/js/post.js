@@ -1,5 +1,6 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
-import { renderNameWithBadge } from "./util.js";
+import { createNameWithBadge } from "./util.js";
 import {
   onSnapshot,
   doc,
@@ -67,7 +68,8 @@ async function loadPost() {
 
     const userInfo = await getUserInfo(data.uid);
     const authorEl = document.getElementById("author");
-    authorEl.innerHTML = renderNameWithBadge(userInfo.name, userInfo);
+    authorEl.textContent = "";
+    authorEl.appendChild(createNameWithBadge(userInfo.name, userInfo));
     authorEl.style.cursor = "pointer";
     authorEl.onclick = () => {
       location.href = `profile.html?id=${data.uid}`;
@@ -88,7 +90,7 @@ async function renderComments(comments) {
   const box = document.getElementById("comments");
   if (!box) return;
 
-  box.innerHTML = "";
+  box.replaceChildren();
 
   for (const c of comments) {
     const div = document.createElement("div");
@@ -99,7 +101,8 @@ async function renderComments(comments) {
     const author = document.createElement("b");
     author.className = "userLink";
     author.dataset.uid = c.uid || "";
-    author.innerHTML = renderNameWithBadge(userInfo.name, userInfo);
+    author.textContent = "";
+    author.appendChild(createNameWithBadge(userInfo.name, userInfo));
     author.style.cursor = "pointer";
     author.onclick = () => {
       location.href = `profile.html?id=${c.uid}`;
@@ -175,3 +178,4 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 });
+

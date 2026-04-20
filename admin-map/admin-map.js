@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 (() => {
   const EPS = 1e-9;
   const palette = [
@@ -175,29 +176,40 @@
   function setInfo(region, samples = []) {
     if (!hoverRegionInfo) return;
     if (!region) {
-      hoverRegionInfo.innerHTML = "마우스를 올리면 구역 정보가 표시됩니다.";
+      hoverRegionInfo.textContent = "마우스를 올리면 구역 정보가 표시됩니다.";
       return;
     }
 
     const sampleText = samples.slice(0, 4).join(", ");
-    hoverRegionInfo.innerHTML = `
-      <strong>${region.region}</strong><br>
-      역 ${region.count}개 · ${sampleText || "표시할 역이 없습니다"}
-    `;
+    const strong = document.createElement("strong");
+    strong.textContent = region.region;
+    const lineBreak = document.createElement("br");
+    const details = document.createTextNode(`역 ${region.count}개 · ${sampleText || "표시할 역이 없습니다"}`);
+    hoverRegionInfo.replaceChildren(strong, lineBreak, details);
   }
 
   function renderLegend() {
     if (!regionLegend) return;
 
-    regionLegend.innerHTML = regionEntries.map(region => {
+    const fragment = document.createDocumentFragment();
+    for (const region of regionEntries) {
       const color = colorForRegion(region.region);
-      return `
-        <button class="line-pill" data-region="${region.region}" type="button">
-          <span class="swatch" style="background:${color.text};"></span>
-          <span>${region.region} · ${region.count}</span>
-        </button>
-      `;
-    }).join("");
+      const button = document.createElement("button");
+      button.className = "line-pill";
+      button.type = "button";
+      button.dataset.region = region.region;
+
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color.text;
+
+      const label = document.createElement("span");
+      label.textContent = `${region.region} · ${region.count}`;
+
+      button.append(swatch, label);
+      fragment.appendChild(button);
+    }
+    regionLegend.replaceChildren(fragment);
 
     regionLegend.querySelectorAll("[data-region]").forEach(button => {
       const regionName = button.dataset.region;
@@ -533,3 +545,4 @@
   refreshState();
   setInfo(null);
 })();
+

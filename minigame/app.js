@@ -1,4 +1,5 @@
-﻿import { auth, db } from "../community/js/firebase.js";
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
+import { auth, db } from "../community/js/firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   addDoc,
@@ -958,7 +959,7 @@ function updateAccountPanel() {
   if (ui.accountStatus) {
     ui.accountStatus.textContent = signedIn
       ? `로그인됨: ${authUser.email || "계정"}`
-      : "회원가입이나 로그인으로 닉네임을 더 안전하게 쓸 수 있습니다.";
+      : "Google 로그인 후 닉네임을 더 안전하게 쓸 수 있습니다.";
   }
   if (ui.accountLogoutBtn?.style) {
     ui.accountLogoutBtn.style.display = signedIn ? "inline-flex" : "none";
@@ -1038,11 +1039,28 @@ function renderRoomInfo() {
   // 모드와 방 정보는 작은 칩 형태로 보여준다.
   if (!ui.roomInfo) return;
   const aiLabel = session.mode === "ai" ? `AI 난이도 ${getAiDifficultyLabel()}` : "";
-  ui.roomInfo.innerHTML = [
-    `<span class="turn-chip"><strong>모드</strong> ${currentModeLabel()}</span>`,
-    `<span class="turn-chip">${roomInfoText()}</span>`,
-    aiLabel ? `<span class="turn-chip">${aiLabel}</span>` : "",
-  ].filter(Boolean).join("");
+  const fragment = document.createDocumentFragment();
+
+  const chip1 = document.createElement("span");
+  chip1.className = "turn-chip";
+  const strong = document.createElement("strong");
+  strong.textContent = "모드";
+  chip1.append(strong, document.createTextNode(` ${currentModeLabel()}`));
+
+  const chip2 = document.createElement("span");
+  chip2.className = "turn-chip";
+  chip2.textContent = roomInfoText();
+
+  fragment.append(chip1, chip2);
+
+  if (aiLabel) {
+    const chip3 = document.createElement("span");
+    chip3.className = "turn-chip";
+    chip3.textContent = aiLabel;
+    fragment.appendChild(chip3);
+  }
+
+  ui.roomInfo.replaceChildren(fragment);
 }
 
 function renderTurnInfo() {
@@ -1061,18 +1079,33 @@ function renderTurnInfo() {
   const now = Date.now();
   const xClock = clockText(getClockRemaining(gameState, "X", now));
   const oClock = clockText(getClockRemaining(gameState, "O", now));
-  ui.turnInfo.innerHTML = [
-    `<span class="turn-chip"><strong>${turnText}</strong></span>`,
-    `<span class="turn-chip">남은 행동 ${gameState.turnActions}</span>`,
-    `<span class="turn-chip">X ${xClock}</span>`,
-    `<span class="turn-chip">O ${oClock}</span>`,
-    `<span class="turn-chip">${selectedPiece ? `${selectedPiece.owner} 선택 중` : "선택 없음"}</span>`,
-    `<span class="turn-chip">${openingText}</span>`,
-    conflictText ? `<span class="turn-chip">${conflictText}</span>` : "",
-    `<span class="turn-chip">${holdLine && gameState.victoryHoldPlayer ? `3목 보존 중: ${gameState.victoryHoldPlayer} (${gameState.victoryHoldTurnsRemaining || 0}턴)` : "3목 보존 중 없음"}</span>`,
-    `<span class="turn-chip">${holdAttemptsText}</span>`,
-    `<span class="turn-chip">${piecesText}</span>`,
-  ].join("");
+  const fragment = document.createDocumentFragment();
+  const values = [
+    { strong: turnText },
+    { text: `남은 행동 ${gameState.turnActions}` },
+    { text: `X ${xClock}` },
+    { text: `O ${oClock}` },
+    { text: selectedPiece ? `${selectedPiece.owner} 선택 중` : "선택 없음" },
+    { text: openingText },
+    conflictText ? { text: conflictText } : null,
+    { text: holdLine && gameState.victoryHoldPlayer ? `3목 보존 중: ${gameState.victoryHoldPlayer} (${gameState.victoryHoldTurnsRemaining || 0}턴)` : "3목 보존 중 없음" },
+    { text: holdAttemptsText },
+    { text: piecesText },
+  ].filter(Boolean);
+
+  for (const value of values) {
+    const chip = document.createElement("span");
+    chip.className = "turn-chip";
+    if (value.strong) {
+      const bold = document.createElement("strong");
+      bold.textContent = value.strong;
+      chip.appendChild(bold);
+    } else {
+      chip.textContent = value.text;
+    }
+    fragment.appendChild(chip);
+  }
+  ui.turnInfo.replaceChildren(fragment);
 }
 
 function renderStatus() {
@@ -1101,13 +1134,20 @@ function renderStatus() {
     gameState.gameOver && gameState.drawReason === "3목 보존 10회 제한" ? "양쪽 모두 3목 보존을 10번씩 시도했습니다." : "",
     frozenCount ? `얼어 있는 말 ${frozenCount}개` : "",
   ].filter(Boolean);
-  ui.status.innerHTML = [
-    formatEventLine(currentModeLabel()),
-    formatEventLine(headline),
-    leadLine ? formatEventLine(leadLine) : "",
-    ...eventLines.map(formatEventLine),
-    ...extraLines.map(formatEventLine),
-  ].filter(Boolean).join("");
+  const fragment = document.createDocumentFragment();
+  for (const line of [
+    currentModeLabel(),
+    headline,
+    ...(leadLine ? [leadLine] : []),
+    ...eventLines,
+    ...extraLines,
+  ]) {
+    const span = document.createElement("span");
+    span.className = "status-line";
+    span.textContent = line;
+    fragment.appendChild(span);
+  }
+  ui.status.replaceChildren(fragment);
 }
 
 function renderTurnHistory() {
@@ -1115,21 +1155,52 @@ function renderTurnHistory() {
   if (!ui.turnHistory) return;
   const entries = Array.isArray(gameState.turnHistory) ? gameState.turnHistory : [];
   if (!entries.length) {
-    ui.turnHistory.innerHTML = '<span class="history-empty">아직 기록이 없습니다.</span>';
+    const empty = document.createElement("span");
+    empty.className = "history-empty";
+    empty.textContent = "아직 기록이 없습니다.";
+    ui.turnHistory.replaceChildren(empty);
     return;
   }
-  ui.turnHistory.innerHTML = entries
-    .map((entry) => `
-      <div class="history-row">
-        <strong>${entry.turn}.</strong>
-        <div class="history-body">
-          <div class="history-main">${entry.text}</div>
-          <div class="history-meta">분석: 최선 ${entry.bestMove || "없음"} / 적당 ${entry.decentMove || "없음"}</div>
-          <div class="history-anno">판정: <span class="turn-anno">${entry.annotation || ""}</span></div>
-          ${entry.openingLabel ? `<div class="history-opening">오프닝: ${entry.openingLabel}${entry.openingImpact ? ` · ${entry.openingImpact}` : ""}</div>` : ""}
-        </div>
-      </div>`)
-    .join("");
+  const fragment = document.createDocumentFragment();
+  for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = "history-row";
+
+    const strong = document.createElement("strong");
+    strong.textContent = `${entry.turn}.`;
+
+    const body = document.createElement("div");
+    body.className = "history-body";
+
+    const main = document.createElement("div");
+    main.className = "history-main";
+    main.textContent = entry.text;
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+    meta.textContent = `분석: 최선 ${entry.bestMove || "없음"} / 적당 ${entry.decentMove || "없음"}`;
+
+    const anno = document.createElement("div");
+    anno.className = "history-anno";
+    anno.append(document.createTextNode("판정: "));
+    const annoSpan = document.createElement("span");
+    annoSpan.className = "turn-anno";
+    annoSpan.textContent = entry.annotation || "";
+    anno.appendChild(annoSpan);
+
+    body.append(main, meta, anno);
+
+    if (entry.openingLabel) {
+      const opening = document.createElement("div");
+      opening.className = "history-opening";
+      opening.textContent = `오프닝: ${entry.openingLabel}${entry.openingImpact ? ` · ${entry.openingImpact}` : ""}`;
+      body.appendChild(opening);
+    }
+
+    row.append(strong, body);
+    fragment.appendChild(row);
+  }
+  ui.turnHistory.replaceChildren(fragment);
 }
 
 function boardPositionSummary(state = gameState) {
@@ -1205,18 +1276,29 @@ function renderChat() {
   const messages = Array.isArray(session.chatLog) ? session.chatLog : [];
   if (ui.chatMessages) {
     if (!messages.length) {
-      ui.chatMessages.innerHTML = '<div class="chat-empty">대화가 아직 없습니다.</div>';
+      const empty = document.createElement("div");
+      empty.className = "chat-empty";
+      empty.textContent = "대화가 아직 없습니다.";
+      ui.chatMessages.replaceChildren(empty);
     } else {
-      ui.chatMessages.innerHTML = messages
-        .map((message) => {
-          const mine = message.uid && (message.uid === authUser?.uid || message.uid === getGuestId());
-          return `
-            <div class="chat-item ${mine ? "mine" : "theirs"}">
-              <div class="chat-meta">${escapeHtml(message.name || "익명")} · ${escapeHtml(message.timeText || "")}</div>
-              <div class="chat-bubble">${escapeHtml(message.text || "")}</div>
-            </div>`;
-        })
-        .join("");
+      const fragment = document.createDocumentFragment();
+      for (const message of messages) {
+        const mine = message.uid && (message.uid === authUser?.uid || message.uid === getGuestId());
+        const item = document.createElement("div");
+        item.className = `chat-item ${mine ? "mine" : "theirs"}`;
+
+        const meta = document.createElement("div");
+        meta.className = "chat-meta";
+        meta.textContent = `${message.name || "익명"} · ${message.timeText || ""}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble";
+        bubble.textContent = message.text || "";
+
+        item.append(meta, bubble);
+        fragment.appendChild(item);
+      }
+      ui.chatMessages.replaceChildren(fragment);
     }
   }
 
@@ -1297,7 +1379,7 @@ function renderBoard() {
   if (!ui.board) return;
   const highlightLine = getLine(gameState, gameState.victoryHoldPlayer || gameState.currentPlayer);
   const selectedMoves = selectedIndex === null ? [] : legalMovesForPiece(gameState, selectedIndex, gameState.currentPlayer);
-  ui.board.innerHTML = "";
+  ui.board.replaceChildren();
   for (let i = 0; i < BOARD_CELLS; i++) {
     const piece = gameState.board[i];
     const special = SPECIAL_TILES[i];
@@ -1317,15 +1399,42 @@ function renderBoard() {
     cell.className = classes.join(" ");
     cell.title = describeCell(i, piece, special);
     const mark = piece ? piece.owner : special ? special.icon : "";
-    cell.innerHTML = `
-      <div class="cell-content">
-        <span class="cell-coord">${coordLabel(i)}</span>
-        <span class="cell-mark ${piece ? `piece-${piece.owner.toLowerCase()}` : ""}">${mark}</span>
-        ${special ? `<span class="tile-icon">${special.icon}</span>` : ""}
-        ${special ? `<span class="tile-badge">${special.short}</span>` : ""}
-        ${piece?.frozenTurns > 0 ? '<span class="status-badge">F</span>' : ""}
-        ${piece?.shieldTurns > 0 ? '<span class="status-badge shield-badge">S</span>' : ""}
-      </div>`;
+    const content = document.createElement("div");
+    content.className = "cell-content";
+
+    const coord = document.createElement("span");
+    coord.className = "cell-coord";
+    coord.textContent = coordLabel(i);
+
+    const markSpan = document.createElement("span");
+    markSpan.className = `cell-mark ${piece ? `piece-${piece.owner.toLowerCase()}` : ""}`;
+    markSpan.textContent = mark;
+
+    content.append(coord, markSpan);
+
+    if (special) {
+      const tileIcon = document.createElement("span");
+      tileIcon.className = "tile-icon";
+      tileIcon.textContent = special.icon;
+      const tileBadge = document.createElement("span");
+      tileBadge.className = "tile-badge";
+      tileBadge.textContent = special.short;
+      content.append(tileIcon, tileBadge);
+    }
+    if (piece?.frozenTurns > 0) {
+      const badge = document.createElement("span");
+      badge.className = "status-badge";
+      badge.textContent = "F";
+      content.appendChild(badge);
+    }
+    if (piece?.shieldTurns > 0) {
+      const badge = document.createElement("span");
+      badge.className = "status-badge shield-badge";
+      badge.textContent = "S";
+      content.appendChild(badge);
+    }
+
+    cell.appendChild(content);
     cell.addEventListener("click", () => handleCellClick(i));
     ui.board.appendChild(cell);
   }
@@ -1856,4 +1965,5 @@ function startDefaultGame() {
 }
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { renderAll(); scheduleAiTurn(); } });
+
 

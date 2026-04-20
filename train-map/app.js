@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 (() => {
   const stationEntries = Object.entries(stations).map(([name, value]) => ({
     name,
@@ -113,11 +114,25 @@
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
   function setResult(message, strong = false) {
-    resultBox.innerHTML = strong ? `<strong>${message}</strong>` : message;
+    resultBox.replaceChildren();
+    if (strong) {
+      const bold = document.createElement("strong");
+      bold.textContent = message;
+      resultBox.appendChild(bold);
+      return;
+    }
+    resultBox.textContent = message;
   }
 
   function setRegion(message, strong = false) {
-    regionBox.innerHTML = strong ? `<strong>${message}</strong>` : message;
+    regionBox.replaceChildren();
+    if (strong) {
+      const bold = document.createElement("strong");
+      bold.textContent = message;
+      regionBox.appendChild(bold);
+      return;
+    }
+    regionBox.textContent = message;
   }
 
   function clampScale(value) {
@@ -195,19 +210,23 @@
   }
 
   function rebuildStationOptions() {
-    stationOptions.innerHTML = stationEntries
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "ko"))
-      .map(station => `<option value="${station.name}"></option>`)
-      .join("");
+    const fragment = document.createDocumentFragment();
+    for (const station of stationEntries.slice().sort((a, b) => a.name.localeCompare(b.name, "ko"))) {
+      const option = document.createElement("option");
+      option.value = station.name;
+      fragment.appendChild(option);
+    }
+    stationOptions.replaceChildren(fragment);
   }
 
   function rebuildLineOptions() {
-    lineOptions.innerHTML = lineEntries
-      .slice()
-      .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"))
-      .map(line => `<option value="${line.displayName}"></option>`)
-      .join("");
+    const fragment = document.createDocumentFragment();
+    for (const line of lineEntries.slice().sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"))) {
+      const option = document.createElement("option");
+      option.value = line.displayName;
+      fragment.appendChild(option);
+    }
+    lineOptions.replaceChildren(fragment);
   }
 
   function rebuildCategoryFilters() {
@@ -216,11 +235,18 @@
       { key: "planned", label: "계획 노선" }
     ];
 
-    categoryFilters.innerHTML = categories.map(category => `
-      <button class="filter-chip ${state.enabledCategories.has(category.key) ? "active" : ""}" data-category="${category.key}" type="button">
-        <span>${category.label}</span>
-      </button>
-    `).join("");
+    const fragment = document.createDocumentFragment();
+    for (const category of categories) {
+      const button = document.createElement("button");
+      button.className = `filter-chip ${state.enabledCategories.has(category.key) ? "active" : ""}`;
+      button.dataset.category = category.key;
+      button.type = "button";
+      const span = document.createElement("span");
+      span.textContent = category.label;
+      button.appendChild(span);
+      fragment.appendChild(button);
+    }
+    categoryFilters.replaceChildren(fragment);
 
     categoryFilters.querySelectorAll("[data-category]").forEach(button => {
       button.addEventListener("click", () => {
@@ -244,22 +270,39 @@
       planned: lineEntries.filter(line => line.planned)
     };
 
-    lineGroups.innerHTML = Object.entries(grouped).map(([key, lines]) => {
+    const fragment = document.createDocumentFragment();
+    for (const [key, lines] of Object.entries(grouped)) {
       const title = key === "planned" ? "계획 노선" : "운행 노선";
-      return `
-        <section class="line-group">
-          <h3>${title}</h3>
-          <div class="line-list">
-            ${lines.map(line => `
-              <button class="line-pill" data-line="${line.lineName}" type="button">
-                <span class="swatch" style="background:${line.color};"></span>
-                <span>${line.displayName}</span>
-              </button>
-            `).join("")}
-          </div>
-        </section>
-      `;
-    }).join("");
+      const section = document.createElement("section");
+      section.className = "line-group";
+
+      const h3 = document.createElement("h3");
+      h3.textContent = title;
+
+      const lineList = document.createElement("div");
+      lineList.className = "line-list";
+
+      for (const line of lines) {
+        const button = document.createElement("button");
+        button.className = "line-pill";
+        button.dataset.line = line.lineName;
+        button.type = "button";
+
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = line.color;
+
+        const label = document.createElement("span");
+        label.textContent = line.displayName;
+
+        button.append(swatch, label);
+        lineList.appendChild(button);
+      }
+
+      section.append(h3, lineList);
+      fragment.appendChild(section);
+    }
+    lineGroups.replaceChildren(fragment);
 
     elements.linePills = Array.from(lineGroups.querySelectorAll(".line-pill"));
     elements.linePills.forEach(pill => {
@@ -661,3 +704,4 @@
 
   initialRender();
 })();
+

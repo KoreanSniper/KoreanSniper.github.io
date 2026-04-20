@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
 import { escapeHTML } from "./util.js";
 import {
@@ -71,3 +72,4 @@ onAuthStateChanged(auth, async (user) => {
     postList.innerHTML = "<p>글을 불러오는 중 오류 발생</p>";
   }
 });
+

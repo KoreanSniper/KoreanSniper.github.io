@@ -1,44 +1,84 @@
-import { db } from "./firebase.js";
-import { onSnapshot,doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
+import { db, auth } from "./firebase.js";
+import { createNameWithBadge } from "./util.js";
+import {
+  onSnapshot,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 import { listenComments, addComment } from "./comment.js";
 import { likeComment, dislikeComment } from "./commentlike.js";
 import { reportComment } from "./reportcomment.js";
 import { deleteComment } from "./deletecomment.js";
+
 import { likePost, dislikePost } from "./like.js";
 import { reportPost } from "./report.js";
 import { deletePost } from "./delete.js";
 
 const postId = new URLSearchParams(location.search).get("id");
 
-// =====================
-// 🚨 안전 가드
-// =====================
 if (!postId) {
   alert("잘못된 접근");
   location.href = "index.html";
 }
 
-// =====================
-// 📌 게시글 로딩
-// =====================
+const userCache = {};
+
+async function getUserInfo(uid) {
+  if (!uid) {
+    return { name: "User", email: "", isAdmin: false };
+  }
+
+  if (userCache[uid]) return userCache[uid];
+
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+
+    if (snap.exists()) {
+      const data = snap.data();
+      const info = {
+        name: data.username || "User",
+        email: data.email || "",
+        isAdmin: Boolean(data.isAdmin)
+      };
+
+      userCache[uid] = info;
+      return info;
+    }
+  } catch (e) {
+    console.error("USER LOAD ERROR:", e);
+  }
+
+  return { name: "User", email: "", isAdmin: false };
+}
+
 async function loadPost() {
   try {
     const snap = await getDoc(doc(db, "posts", postId));
 
     if (!snap.exists()) {
-      const t = document.getElementById("title");
-      if (t) t.innerText = "없는 글";
+      document.getElementById("title").innerText = "없는 글";
       return;
     }
 
     const data = snap.data();
+    document.getElementById("title").innerText = data.title || "";
+    document.getElementById("content").innerText = data.content || "";
 
-    const title = document.getElementById("title");
-    const content = document.getElementById("content");
+    const userInfo = await getUserInfo(data.uid);
+    const authorEl = document.getElementById("author");
+    authorEl.textContent = "";
+    authorEl.appendChild(createNameWithBadge(userInfo.name, userInfo));
+    authorEl.style.cursor = "pointer";
+    authorEl.onclick = () => {
+      location.href = `profile.html?id=${data.uid}`;
+    };
 
-    if (title) title.innerText = data.title || "";
-    if (content) content.innerText = data.content || "";
-
+    const user = auth.currentUser;
+    if (user && user.uid === data.uid) {
+      document.getElementById("editBtn").style.display = "inline-block";
+    }
   } catch (e) {
     console.error("POST LOAD ERROR:", e);
   }
@@ -46,41 +86,62 @@ async function loadPost() {
 
 loadPost();
 
-// =====================
-// 💬 댓글 렌더 (안정 버전)
-// =====================
-function renderComments(comments) {
+async function renderComments(comments) {
   const box = document.getElementById("comments");
   if (!box) return;
 
-  box.innerHTML = "";
+  box.replaceChildren();
 
-  comments.forEach(c => {
+  for (const c of comments) {
     const div = document.createElement("div");
     div.className = "card";
 
-    div.innerHTML = `
-      <b>${c.uid || "익명"}</b>
-      <p>${c.content || ""}</p>
+    const userInfo = await getUserInfo(c.uid);
 
-      👍 ${c.likes || 0}
-      👎 ${c.dislikes || 0}
+    const author = document.createElement("b");
+    author.className = "userLink";
+    author.dataset.uid = c.uid || "";
+    author.textContent = "";
+    author.appendChild(createNameWithBadge(userInfo.name, userInfo));
+    author.style.cursor = "pointer";
+    author.onclick = () => {
+      location.href = `profile.html?id=${c.uid}`;
+    };
 
-      <button class="likeC">👍</button>
-      <button class="dislikeC">👎</button>
-      <button class="reportC">🚨 신고</button>
-      <button class="deleteC">🗑 삭제</button>
-    `;
+    const content = document.createElement("p");
+    content.textContent = c.content || "";
 
-    div.querySelector(".likeC").onclick = () => likeComment(c.id);
-    div.querySelector(".dislikeC").onclick = () => dislikeComment(c.id);
-    div.querySelector(".reportC").onclick = () => reportComment(c.id);
-    div.querySelector(".deleteC").onclick = () => deleteComment(c.id);
+    const meta = document.createElement("p");
+    meta.textContent = `👍 ${c.likes || 0}  👎 ${c.dislikes || 0}`;
 
+    const likeButton = document.createElement("button");
+    likeButton.className = "likeC";
+    likeButton.type = "button";
+    likeButton.textContent = "좋아요";
+    likeButton.onclick = () => likeComment(c.id);
+
+    const dislikeButton = document.createElement("button");
+    dislikeButton.className = "dislikeC";
+    dislikeButton.type = "button";
+    dislikeButton.textContent = "싫어요";
+    dislikeButton.onclick = () => dislikeComment(c.id);
+
+    const reportButton = document.createElement("button");
+    reportButton.className = "reportC";
+    reportButton.type = "button";
+    reportButton.textContent = "신고";
+    reportButton.onclick = () => reportComment(c.id);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "deleteC";
+    deleteButton.type = "button";
+    deleteButton.textContent = "삭제";
+    deleteButton.onclick = () => deleteComment(c.id);
+
+    div.append(author, content, meta, likeButton, dislikeButton, reportButton, deleteButton);
     box.appendChild(div);
-  });
+  }
 }
-
 
 function listenPost(postId) {
   const ref = doc(db, "posts", postId);
@@ -89,39 +150,32 @@ function listenPost(postId) {
     if (!snap.exists()) return;
 
     const data = snap.data();
-
-    const likes = document.getElementById("likes");
-    const dislikes = document.getElementById("dislikes");
-
-    if (likes) likes.innerText = data.likes || 0;
-    if (dislikes) dislikes.innerText = data.dislikes || 0;
+    document.getElementById("likes").innerText = data.likes || 0;
+    document.getElementById("dislikes").innerText = data.dislikes || 0;
   });
 }
 
-// 실행
 listenPost(postId);
-// =====================
-// 🔥 댓글 실시간 (중복 방지 중요)
-// =====================
 listenComments(postId, renderComments);
 
-// =====================
-// 💬 댓글 작성
-// =====================
 window.addEventListener("DOMContentLoaded", () => {
-
   const likeBtn = document.getElementById("likeBtn");
   const dislikeBtn = document.getElementById("dislikeBtn");
   const reportBtn = document.getElementById("reportBtn");
   const deleteBtn = document.getElementById("deleteBtn");
   const commentBtn = document.getElementById("commentBtn");
-
-  console.log("LIKE BTN:", likeBtn);
-  console.log("DISLIKE BTN:", dislikeBtn);
+  const editBtn = document.getElementById("editBtn");
 
   if (likeBtn) likeBtn.onclick = () => likePost(postId);
   if (dislikeBtn) dislikeBtn.onclick = () => dislikePost(postId);
   if (reportBtn) reportBtn.onclick = () => reportPost(postId);
   if (deleteBtn) deleteBtn.onclick = () => deletePost(postId);
   if (commentBtn) commentBtn.onclick = () => addComment(postId);
-}); 
+
+  if (editBtn) {
+    editBtn.onclick = () => {
+      location.href = `edit.html?id=${postId}`;
+    };
+  }
+});
+

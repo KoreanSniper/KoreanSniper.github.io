@@ -1,3 +1,4 @@
+﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -26,3 +27,4 @@ onAuthStateChanged(auth, (user) => {
 
   authDiv.appendChild(renderTextButton("Google로 로그인", () => login()));
 });
+
