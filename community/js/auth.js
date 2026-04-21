@@ -9,6 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc,
+  deleteField,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -24,10 +25,10 @@ async function syncVerifiedUser(user) {
   await setDoc(
     doc(db, "users", user.uid),
     {
-      email: user.email || "",
       displayName: user.displayName || "",
       photoURL: user.photoURL || "",
-      isAdmin: user.email === ADMIN_EMAIL,
+      email: deleteField(),
+      isAdmin: deleteField(),
       emailVerified: true,
       lastLoginAt: new Date(),
       provider: "google",

@@ -49,6 +49,7 @@ service cloud.firestore {
         "updatedAt",
         "state"
       ])
+      && request.resource.data.state is map
       && request.resource.data.hostId == resource.data.hostId
       && request.resource.data.hostName == resource.data.hostName
       && request.resource.data.createdAt == resource.data.createdAt;
@@ -140,9 +141,35 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn();
 
-      allow create: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin()
+        || (
+          isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            "username",
+            "displayName",
+            "photoURL",
+            "status",
+            "createdAt",
+            "lastLoginAt",
+            "provider",
+            "emailVerified"
+          ])
+        );
 
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isAdmin()
+        || (
+          isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            "username",
+            "displayName",
+            "photoURL",
+            "status",
+            "createdAt",
+            "lastLoginAt",
+            "provider",
+            "emailVerified"
+          ])
+        );
 
       allow delete: if isOwner(userId) || isAdmin();
     }
@@ -155,7 +182,10 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(["title", "content", "uid", "email"]);
+        && request.resource.data.title is string
+        && request.resource.data.content is string
+        && request.resource.data.uid is string
+        && request.resource.data.keys().hasOnly(["title", "content", "uid", "createdAt"]);
 
       allow update: if signedIn()
         && (
@@ -163,6 +193,8 @@ service cloud.firestore {
           || (
             (resource.data.uid == request.auth.uid || isAdmin())
             && request.resource.data.uid == resource.data.uid
+            && request.resource.data.diff(resource.data).changedKeys()
+              .hasOnly(["title", "content", "updatedAt"])
           )
         );
 
@@ -178,7 +210,10 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(["postId", "content", "uid"]);
+        && request.resource.data.postId is string
+        && request.resource.data.content is string
+        && request.resource.data.uid is string
+        && request.resource.data.keys().hasOnly(["postId", "content", "uid", "likes", "dislikes", "created"]);
 
       allow update: if isCommentReactionToggle();
 
@@ -190,10 +225,12 @@ service cloud.firestore {
     // POST LIKES
     // =====================
     match /likes/{likeId} {
-      allow read: if true;
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["type", "uid"])
         && request.resource.data.type in ["like", "dislike"];
 
       allow update: if false;
@@ -206,10 +243,12 @@ service cloud.firestore {
     // COMMENT LIKES
     // =====================
     match /comment_likes/{likeId} {
-      allow read: if true;
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["type", "uid"])
         && request.resource.data.type in ["like", "dislike"];
 
       allow update: if false;
@@ -227,8 +266,11 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["postId", "uid", "reason", "type", "status", "createdAt"])
         && request.resource.data.postId is string
-        && request.resource.data.reason is string;
+        && request.resource.data.reason is string
+        && request.resource.data.type == "post"
+        && request.resource.data.status == "pending";
 
       allow update, delete: if false;
     }
@@ -242,8 +284,11 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["commentId", "uid", "reason", "type", "status", "createdAt"])
         && request.resource.data.commentId is string
-        && request.resource.data.reason is string;
+        && request.resource.data.reason is string
+        && request.resource.data.type == "comment"
+        && request.resource.data.status == "pending";
 
       allow update, delete: if false;
     }
@@ -300,10 +345,9 @@ service cloud.firestore {
       allow read: if signedIn()
         && (
           resource.data.status == "waiting"
-          || resource.data.status == "active"
-          || resource.data.status == "ended"
           || resource.data.hostId == request.auth.uid
           || resource.data.guestId == request.auth.uid
+          || isAdmin()
         );
 
       allow create: if signedIn()
@@ -327,12 +371,19 @@ service cloud.firestore {
     // GOMOKU MATCHMAKING
     // =====================
     match /gomokuMatchmaking/{docId} {
-      allow read: if signedIn();
+      allow read: if signedIn()
+        && (request.auth.uid == resource.data.hostId || isAdmin());
 
-      allow create, update: if signedIn()
+      allow create: if signedIn()
         && request.auth.uid == request.resource.data.hostId
         && request.resource.data.keys().hasOnly(["roomId", "hostId", "updatedAt"])
         && request.resource.data.roomId is string;
+
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.hostId
+        && request.resource.data.hostId == resource.data.hostId
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.keys().hasOnly(["roomId", "hostId", "updatedAt"]);
 
       allow delete: if signedIn()
         && (request.auth.uid == resource.data.hostId || isAdmin());
@@ -344,16 +395,18 @@ service cloud.firestore {
     match /gomokuRooms/{roomId}/chat/{messageId} {
       allow read: if signedIn()
         && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status == "waiting"
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
+          || isAdmin()
         );
 
       allow create: if signedIn()
         && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status in ["waiting", "active", "ended"]
+          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status == "waiting"
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
           || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
+          || isAdmin()
         )
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.name is string
@@ -369,7 +422,7 @@ service cloud.firestore {
     // GOMOKU AI MEMORY
     // =====================
     match /gomokuAiMemory/{memoryId} {
-      allow read, write: if signedIn();
+      allow read, write: if isAdmin();
     }
   }
 }

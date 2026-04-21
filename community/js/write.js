@@ -44,7 +44,6 @@ window.writePost = async () => {
       title,
       content,
       uid: currentUser.uid,
-      email: currentUser.email,
       createdAt: serverTimestamp()
     });
 

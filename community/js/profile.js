@@ -11,6 +11,7 @@ import {
 
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -51,7 +52,6 @@ onAuthStateChanged(auth, async (user) => {
 
   const username = data.username || "User";
   const profileInfo = {
-    email: data.email || (targetUid === user.uid ? user.email : ""),
     isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL),
   };
 
@@ -144,8 +144,8 @@ window.saveProfile = async () => {
     await setDoc(
       doc(db, "users", user.uid),
       {
-        email: user.email,
-        isAdmin: user.email === ADMIN_EMAIL,
+        email: deleteField(),
+        isAdmin: deleteField(),
         username: isAllowedNickname(name, profileInfo) ? name : "User",
         status: status || "Inactive",
         createdAt: new Date(),
@@ -168,4 +168,3 @@ window.saveProfile = async () => {
     alert("Profile save failed.");
   }
 };
-

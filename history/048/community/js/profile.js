@@ -1,6 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
-import { ADMIN_EMAIL, escapeHTML, renderNameWithBadge } from "./util.js";
+import { ADMIN_EMAIL, createNameWithBadge } from "./util.js";
 import { getNicknameIssue, isAllowedNickname } from "../../nickname-policy.js";
 
 import {
@@ -11,6 +11,7 @@ import {
 
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -51,12 +52,12 @@ onAuthStateChanged(auth, async (user) => {
 
   const username = data.username || "User";
   const profileInfo = {
-    email: data.email || (targetUid === user.uid ? user.email : ""),
     isAdmin: Boolean(data.isAdmin) || (targetUid === user.uid && user.email === ADMIN_EMAIL),
   };
 
-  document.getElementById("username").innerHTML =
-    renderNameWithBadge(username, profileInfo);
+  const usernameEl = document.getElementById("username");
+  usernameEl.textContent = "";
+  usernameEl.appendChild(createNameWithBadge(username, profileInfo));
 
   document.getElementById("status").innerText = data.status || "Inactive";
 
@@ -76,7 +77,7 @@ async function loadUserPosts(uid) {
   const box = document.getElementById("userPosts");
   if (!box) return;
 
-  box.innerHTML = "";
+  box.replaceChildren();
 
   try {
     const q = query(
@@ -88,7 +89,9 @@ async function loadUserPosts(uid) {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      box.innerHTML = "<p>No posts yet.</p>";
+      const empty = document.createElement("p");
+      empty.textContent = "No posts yet.";
+      box.appendChild(empty);
       document.getElementById("posts").innerText = "0";
       return;
     }
@@ -108,10 +111,11 @@ async function loadUserPosts(uid) {
       div.onmouseover = () => (div.style.transform = "translateY(-2px)");
       div.onmouseout = () => (div.style.transform = "none");
 
-      div.innerHTML = `
-        <h3>${escapeHTML(data.title || "")}</h3>
-        <p>${escapeHTML((data.content || "").slice(0, 100))}</p>
-      `;
+      const title = document.createElement("h3");
+      title.textContent = data.title || "";
+      const excerpt = document.createElement("p");
+      excerpt.textContent = (data.content || "").slice(0, 100);
+      div.append(title, excerpt);
 
       box.appendChild(div);
     });
@@ -140,8 +144,8 @@ window.saveProfile = async () => {
     await setDoc(
       doc(db, "users", user.uid),
       {
-        email: user.email,
-        isAdmin: user.email === ADMIN_EMAIL,
+        email: deleteField(),
+        isAdmin: deleteField(),
         username: isAllowedNickname(name, profileInfo) ? name : "User",
         status: status || "Inactive",
         createdAt: new Date(),
@@ -153,8 +157,9 @@ window.saveProfile = async () => {
       displayName: name,
     });
 
-    document.getElementById("username").innerHTML =
-      renderNameWithBadge(name || "User", profileInfo);
+    const usernameEl = document.getElementById("username");
+    usernameEl.textContent = "";
+    usernameEl.appendChild(createNameWithBadge(name || "User", profileInfo));
     document.getElementById("status").innerText = status || "Inactive";
 
     closeModal();
@@ -163,4 +168,3 @@ window.saveProfile = async () => {
     alert("Profile save failed.");
   }
 };
-

@@ -1329,60 +1329,14 @@ function scoreMove(state, move, player, context = null) {
 
 async function loadAiMemoryRecord(state) {
   if (session.mode !== "online" || !signedIn()) return null;
-  if (!(await ensureFirebase())) return null;
-  const canonical = canonicalizeAiState(state);
-  const cached = aiMemoryCache.get(canonical.key);
-  if (cached) return { ...cached, transformId: canonical.transformId, key: canonical.key };
-
-  try {
-    const snapshot = await getDoc(doc(db, AI_MEMORY_COLLECTION, canonical.key));
-    const record = snapshot.exists() ? snapshot.data() : null;
-    aiMemoryCache.set(canonical.key, record);
-    return record ? { ...record, transformId: canonical.transformId, key: canonical.key } : null;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
+  // AI memory is kept client-local now to avoid exposing a shared writable collection.
+  return null;
 }
 
 async function saveAiMemoryRecord(beforeState, actualMoveIndex, afterState) {
   if (session.mode !== "online" || !signedIn()) return;
-  if (!(await ensureFirebase())) return;
-  const canonical = canonicalizeAiState(beforeState);
-  const canonicalMove = actualToCanonicalMove(actualMoveIndex, canonical.transformId);
-  const ref = doc(db, AI_MEMORY_COLLECTION, canonical.key);
-  let nextRecord = null;
-
-  try {
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      const data = snap.exists() ? snap.data() : {};
-      const moveCounts = { ...(data.moveCounts || {}) };
-      moveCounts[canonicalMove] = (moveCounts[canonicalMove] || 0) + 1;
-      const entries = Object.entries(moveCounts);
-      entries.sort((a, b) => b[1] - a[1]);
-      const bestMoveCanonical = Number(entries[0][0]);
-      const bestMoveCount = entries[0][1];
-      const totalCount = (data.totalCount || 0) + 1;
-      nextRecord = {
-        signature: canonical.key,
-        transformId: canonical.transformId,
-        moveCounts,
-        bestMoveCanonical,
-        bestMoveCount,
-        totalCount,
-        lastSeenAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastOutcome: afterState.gameOver
-          ? (afterState.winner ? `${afterState.winner}-win` : "draw")
-          : "in-progress",
-      };
-      tx.set(ref, nextRecord, { merge: true });
-    });
-    if (nextRecord) aiMemoryCache.set(canonical.key, nextRecord);
-  } catch (error) {
-    console.error(error);
-  }
+  // Client-side writes were removed for the same reason.
+  return;
 }
 
 function applyMemoryBiasToScores(scoredMoves, memoryRecord) {

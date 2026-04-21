@@ -27,7 +27,7 @@ const userCache = {};
 
 async function getUserInfo(uid) {
   if (!uid) {
-    return { name: "User", email: "", isAdmin: false };
+    return { name: "User", isAdmin: false };
   }
 
   if (userCache[uid]) return userCache[uid];
@@ -39,7 +39,6 @@ async function getUserInfo(uid) {
       const data = snap.data();
       const info = {
         name: data.username || "User",
-        email: data.email || "",
         isAdmin: Boolean(data.isAdmin)
       };
 
@@ -50,7 +49,7 @@ async function getUserInfo(uid) {
     console.error("USER LOAD ERROR:", e);
   }
 
-  return { name: "User", email: "", isAdmin: false };
+  return { name: "User", isAdmin: false };
 }
 
 async function loadPost() {

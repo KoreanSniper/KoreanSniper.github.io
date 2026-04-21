@@ -1,6 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
-import { escapeHTML, renderNameWithBadge } from "./util.js";
+import { createNameWithBadge } from "./util.js";
 
 import {
   collection,
@@ -27,11 +27,11 @@ onAuthStateChanged(auth, (user) => {
 
 async function getUserInfo(uid) {
   if (!uid) {
-    return { name: "User", email: "", isAdmin: false };
+    return { name: "User", isAdmin: false };
   }
 
   if (!currentUser) {
-    return { name: "User", email: "", isAdmin: false };
+    return { name: "User", isAdmin: false };
   }
 
   if (userCache[uid]) return userCache[uid];
@@ -43,7 +43,6 @@ async function getUserInfo(uid) {
       const data = snap.data();
       const info = {
         name: data.username || "User",
-        email: data.email || "",
         isAdmin: Boolean(data.isAdmin)
       };
 
@@ -54,11 +53,11 @@ async function getUserInfo(uid) {
     console.error("USER LOAD ERROR:", e);
   }
 
-  return { name: "User", email: "", isAdmin: false };
+  return { name: "User", isAdmin: false };
 }
 
 async function loadPosts() {
-  postsDiv.innerHTML = "";
+  postsDiv.replaceChildren();
 
   if (!authReady) return;
 
@@ -83,11 +82,19 @@ async function loadPosts() {
 
       const userInfo = await getUserInfo(data.uid);
 
-      post.innerHTML = `
-        <h1>${escapeHTML(data.title)}</h1>
-        <p style="color:#949ba4; font-size:13px;">👤 ${renderNameWithBadge(userInfo.name, userInfo)}</p>
-        <p>${escapeHTML(data.content)}</p>
-      `;
+      const title = document.createElement("h1");
+      title.textContent = data.title || "";
+
+      const author = document.createElement("p");
+      author.style.color = "#949ba4";
+      author.style.fontSize = "13px";
+      author.textContent = "👤 ";
+      author.appendChild(createNameWithBadge(userInfo.name, userInfo));
+
+      const content = document.createElement("p");
+      content.textContent = data.content || "";
+
+      post.append(title, author, content);
 
       postsDiv.appendChild(post);
     }
@@ -97,4 +104,3 @@ async function loadPosts() {
 }
 
 loadPosts();
-
