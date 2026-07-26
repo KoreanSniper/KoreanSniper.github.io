@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08111a">
+  <title>PIXELFRONT — 게임 설명</title>
+  <link rel="icon" href="../BlockRail.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="guide.css">
+  <link rel="stylesheet" href="../community/css/global-auth.css">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body class="guide-body">
+  <header class="topbar"><a class="brand" href="./menu.html"><span>B</span> BLOCKRAIL / <b>PIXELFRONT</b></a><nav class="guide-nav"><a href="./menu.html">게임 설정</a><a class="primary" href="./menu.html">플레이</a></nav><div class="global-auth" data-global-auth></div></header>
+  <main class="guide-shell">
+    <section class="guide-hero">
+      <p class="eyebrow">FIELD MANUAL / 01</p>
+      <h1>전선을 만들고,<br><em>국가를 무너뜨려라.</em></h1>
+      <p>PIXELFRONT는 병력을 배정해 영토를 확장하고, 적의 수도와 전선을 무너뜨려 연쇄 항복을 만드는 실시간 영토 전략 게임입니다.</p>
+      <div><a class="guide-play" href="./menu.html">전장 설정하기 →</a><span>승리 조건: 점령 가능한 육지의 95%</span></div>
+    </section>
+
+    <section class="guide-section" id="start">
+      <div class="section-number">01</div><div><p class="eyebrow">DEPLOYMENT</p><h2>게임 시작</h2></div>
+      <div class="guide-grid three">
+        <article><b>1</b><h3>시작 위치 선정</h3><p>해안과 다른 국가에서 떨어진 넓은 육지를 선택하세요. 배치 전에는 다른 국가의 시작 지점이 공개되지 않습니다.</p></article>
+        <article><b>2</b><h3>중립지 확장</h3><p>회색 중립 영토를 클릭하면 설정한 비율만큼 병력이 전선에 배정됩니다. 같은 목표를 다시 누르면 Queue에 증원이 추가됩니다.</p></article>
+        <article><b>3</b><h3>95% 점령</h3><p>점령 가능한 육지의 95%를 확보하면 승리합니다. 승리 후에도 계속하기를 눌러 남은 전투를 진행할 수 있습니다.</p></article>
+      </div>
+    </section>
+
+    <section class="guide-section dark" id="controls">
+      <div class="section-number">02</div><div><p class="eyebrow">CONTROLS</p><h2>조작법</h2></div>
+      <div class="control-list">
+        <div><kbd>드래그</kbd><span>지도 이동</span></div><div><kbd>휠</kbd><span>확대·축소</span></div>
+        <div><kbd>좌클릭</kbd><span>확장 또는 공격 명령</span></div><div><kbd>우클릭 / 길게 누르기</kbd><span>외교·건설·전략 공격</span></div>
+        <div><kbd>Space</kbd><span>일시정지·재개</span></div><div><kbd>0–3</kbd><span>게임 속도 변경</span></div>
+      </div>
+    </section>
+
+    <section class="guide-section" id="combat">
+      <div class="section-number">03</div><div><p class="eyebrow">COMBAT</p><h2>전선과 항복</h2></div>
+      <div class="guide-grid two">
+        <article><h3>국가를 클릭해 공격</h3><p>국경 픽셀을 정밀하게 찾을 필요가 없습니다. 적 영토 어디든 클릭하면 가장 가까운 공유 국경에서 공격이 시작됩니다.</p><ul><li>공격 병력 비율이 높을수록 빠르게 진격</li><li>전선 패널에서 우세·대등·열세 확인</li><li>일시정지, 재개, 철수 가능</li></ul></article>
+        <article><h3>고립 영토 연쇄 항복</h3><p>적의 영토를 포위하거나 전선을 완전히 무너뜨리면 고립된 지역이 한꺼번에 항복합니다. 수도가 함락되면 제한 시간 안에 탈환해야 합니다.</p><ul><li>포위된 영토는 연쇄 항복 가능</li><li>수도 미탈환 시 해당 국가 제거</li><li>패배 후 관전 모드 지원</li></ul></article>
+      </div>
+    </section>
+
+    <section class="guide-section dark" id="systems">
+      <div class="section-number">04</div><div><p class="eyebrow">WAR ROOM</p><h2>전략 시스템</h2></div>
+      <div class="feature-table">
+        <article><i>⚓</i><div><h3>해상 공격과 도하</h3><p>바다 건너 적에게는 상륙 병력을 보내고, 강 건너 적에게는 같은 메뉴로 도하 부대를 준비합니다. 일반 육상 전선은 강을 건너지 못하므로 발원지 쪽으로 우회할 수도 있습니다.</p></div></article>
+        <article><i>⌂</i><div><h3>건물</h3><p><strong>요새·병영·레이더</strong> 외에도 야전병원은 병력을 회복하고, 비행장은 전략 공격 비용·재사용 시간을 줄이며, 해안의 해군기지는 상륙함을 빠르게 이동시킵니다.</p></div></article>
+        <article><i>◎</i><div><h3>외교</h3><p>휴전과 동맹을 제안하거나 관계를 종료하고 전쟁을 선포할 수 있습니다.</p></div></article>
+        <article><i>◆</i><div><h3>전략 도시</h3><p>지도에 배치된 도시를 점령하면 추가 병력 생산을 얻습니다. 작전 목표를 완료해 일회성 증원도 받을 수 있습니다.</p></div></article>
+        <article><i>◐</i><div><h3>전장의 안개</h3><p>한 번도 확인하지 않은 곳은 검게 표시됩니다. 과거에 본 지역은 마지막 정보가 어둡게 남아 현재 정보와 구분됩니다.</p></div></article>
+        <article><i>◎</i><div><h3>전투 정보</h3><p>전선 패널에서 공격·방어 병력, 전력비와 실측 진격 속도 기반 예상 시간을 확인합니다. 수도 함락·상륙 도착·국가 멸망은 전투 기록에 남습니다.</p></div></article>
+        <article><i>◆</i><div><h3>훈장과 업적</h3><p>정복, 도시 점령, 건설, 상륙과 수도 탈환 업적을 달성하면 병력 보상을 받습니다. 획득한 훈장은 다음 경기에도 누적 기록됩니다.</p></div></article>
+        <article><i>★</i><div><h3>사령관</h3><p>적 영토를 점령하면 사령관 경험치와 레벨이 오릅니다. 기동 공세·종심 방어·전선 병참 중 하나로 특화하고 3레벨부터 전격전·철벽·긴급 보급 능력을 사용할 수 있습니다.</p></div></article>
+        <article><i>◉</i><div><h3>첩보전</h3><p>레이더와 전략 도시에서 정보점을 생산합니다. 적 국경·수도 정찰과 군수 방해로 직접 전투 없이도 전황을 흔들 수 있습니다.</p></div></article>
+        <article><i>▤</i><div><h3>전후 보고서</h3><p>경기가 끝나면 점령·상실 영토, 최고 영토, 공격·건설·첩보·상륙 횟수와 사령관·훈장 기록을 확인할 수 있습니다.</p></div></article>
+      </div>
+    </section>
+
+    <section class="guide-tips"><p class="eyebrow">COMMANDER'S NOTES</p><h2>처음 플레이할 때 기억할 것</h2><ol><li>초반에는 병력을 전부 쓰지 말고 빠르게 중립지를 확보하세요.</li><li>정면 소모전보다 적의 좁은 연결부와 수도 방향을 노리세요.</li><li>공격 Queue를 연속으로 추가하기 전에 전선의 전력비를 확인하세요.</li><li>레이더와 전략 도시를 확보하면 시야와 병력 생산에서 우위를 얻습니다.</li></ol><a class="guide-play" href="./menu.html">PIXELFRONT 시작하기 →</a></section>
+  </main>
+  <script type="module" src="../community/js/global-auth.js"></script>
+</body>
+</html>
