@@ -21,7 +21,7 @@ import{installEspionage,updateEspionageUI}from"./espionage.js";
 import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js";
 import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js";
 
-const $=s=>document.querySelector(s),canvas=$("#game"),params=new URLSearchParams(location.search);
+const $=s=>document.querySelector(s),canvas=$("#game"),params=new URLSearchParams(location.search),onlineSession=params.get("session");
 const savedData=params.get("continue")==="1"?readGame():null,savedOpts=savedData?.opts||{};
 const seedParam=params.get("seed"),urlSeed=seedParam!==null&&/^\d+$/.test(seedParam)&&Number(seedParam)<=4294967295?Number(seedParam)>>>0:null;
 const opts={name:(savedOpts.name||params.get("name")||"플레이어").slice(0,14),mapType:savedData?.mapType||(["world","pangaea"].includes(params.get("map"))?params.get("map"):"world"),aiCount:Math.max(1,Math.min(50,+savedOpts.aiCount||+params.get("ai")||8)),difficulty:["easy","normal","hard"].includes(savedOpts.difficulty)?savedOpts.difficulty:(["easy","normal","hard"].includes(params.get("difficulty"))?params.get("difficulty"):"normal")};
@@ -31,7 +31,7 @@ async function generateMap(seed,mapType){loadingProgress("terrain",2);if(typeof 
 const generatedMap=await generateMap(selectedSeed,opts.mapType);
 let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(canvas,e),b=new Bots(e,opts.difficulty),timer,percent=25,drag=false,moved=false,last={x:0,y:0};
 const gameServer=new PixelFrontServer();
-const gameServerReady=gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty}).catch(error=>{toast("서버 연결이 필요합니다. 로그인 상태를 확인하세요.");console.warn("PIXELFRONT server unavailable",error);return null});
+const gameServerReady=(onlineSession?gameServer.join(onlineSession):gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty})).catch(error=>{toast("서버 연결이 필요합니다. 로그인 상태를 확인하세요.");console.warn("PIXELFRONT server unavailable",error);return null});
 const issueLocal=e.issue.bind(e);
 let authoritySync=null,syncBusy=false;
 function applyAuthority(state){
@@ -41,7 +41,10 @@ function applyAuthority(state){
     for(let i=0;i<owner.length;i++)if(e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
     r.visionTick=-1
   }
-  for(const saved of state.nations){const nation=e.nations[saved.id];if(!nation)continue;nation.troops=saved.troops;nation.spawn=saved.spawn;nation.alive=saved.alive}
+  for(const saved of state.nations){const nation=e.nations[gameServer.toLocalNation(saved.id)];if(!nation)continue;nation.troops=saved.troops;nation.spawn=saved.spawn;nation.alive=saved.alive;nation.name=saved.name}
+  if(state.buildings&&e.buildings){e.buildings.fill(0);for(const nation of e.nations)nation.buildingTiles?.clear();for(const[tile,type]of state.buildings){const owner=e.owner[tile];if(owner>=0){e.buildings[tile]=type;e.nations[owner].buildingTiles?.add(tile)}}}
+  if(state.relations)e.relations=Array.from({length:e.nations.length},(_,a)=>Array.from({length:e.nations.length},(_,b)=>state.relations[gameServer.toServerNation(a)]?.[gameServer.toServerNation(b)]??0));
+  if(state.navalMissions)e.navalMissions=state.navalMissions.map(m=>({...m,attacker:gameServer.toLocalNation(m.attacker),defender:gameServer.toLocalNation(m.defender)}));
   e.tick=Math.max(e.tick,state.tick||0);e.running=state.running!==false;e.winner=state.winner??null
 }
 async function syncAuthority(){if(syncBusy||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(true)).state)}catch(error){console.warn("PIXELFRONT sync failed",error)}finally{syncBusy=false}}
@@ -61,6 +64,12 @@ installMobileControls(canvas,e);
 installAchievements(e,toast);
 installCommanders(e,toast);
 installEspionage(e,r,toast);
+const constructLocal=e.constructBuilding?.bind(e),navalLocal=e.launchNaval?.bind(e),relationLocal=e.setRelation?.bind(e),pactLocal=e.requestPact?.bind(e);
+e.authorityCommand=command=>gameServer.command(command).then(result=>{applyAuthority(result.state);return result}).catch(error=>{toast("서버가 명령을 거부했습니다.");console.warn("PIXELFRONT authority command rejected",error);return null});
+e.constructBuilding=(playerId,tile,type)=>{if(playerId!==0)return constructLocal(playerId,tile,type);e.authorityCommand({type:"build",tile,building:type});return{ok:true,message:"건설 승인을 요청했습니다."}};
+e.launchNaval=(playerId,tile,value)=>{if(playerId!==0)return navalLocal(playerId,tile,value);e.authorityCommand({type:"naval",tile,percent:value});return{ok:true,message:"상륙 명령 승인을 요청했습니다."}};
+e.setRelation=(from,to,value)=>{if(from!==0&&to!==0)return relationLocal(from,to,value);e.authorityCommand({type:"relation",target:to,value,request:false});return true};
+e.requestPact=(from,to,value)=>{if(from!==0)return pactLocal(from,to,value);e.authorityCommand({type:"relation",target:to,value,request:true});return true};
 const saveTools=document.createElement("div");saveTools.className="file-save-tools";saveTools.innerHTML='<button type="button" data-save>PXFO 저장</button><button type="button" data-load>PXFO 불러오기</button><input type="file" accept=".pxfo,application/x-pixelfront+json" hidden>';document.querySelector(".game-shell").append(saveTools);saveTools.querySelector("[data-save]").onclick=()=>{try{exportGameFile(e,opts);toast(".pxfo 저장 파일을 만들었습니다")}catch(error){toast(error.message)}};const fileInput=saveTools.querySelector("input");saveTools.querySelector("[data-load]").onclick=()=>fileInput.click();fileInput.onchange=async()=>{try{await importGameFile(fileInput.files?.[0]);location.href="./play.html?continue=1"}catch(error){toast(error.message)}finally{fileInput.value=""}};
 const resumed=restoreGame(e,savedData);e.renderMission?.();if(!resumed)for(let i=1;i<e.nations.length;i++)e.autoSpawn(i);
 r.draw();
@@ -78,6 +87,8 @@ async function deploy(i){
   queueUI.show();timeControls.show();ui();
   timer=setInterval(()=>{b.step();e.step();ui();r.draw();if(!e.spectating&&!e.nations[0].alive)finish(true);else if(e.winner!==null)finish(false)},RULES.tickMs)
 }
+if(onlineSession)gameServerReady.then(result=>{if(!result?.state)return;applyAuthority(result.state);e.running=true;startAuthoritySync();r.visionTick=-1;r.visible.fill(0);r.draw();$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(()=>{b.step();e.step();ui();r.draw();if(!e.spectating&&!e.nations[0].alive)finish(true);else if(e.winner!==null)finish(false)},RULES.tickMs)}).catch(error=>toast(error.message));
+
 function ui(){
   if(e.tick&&e.tick%4)return;
   updateCityUI(e);

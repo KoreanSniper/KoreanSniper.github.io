@@ -35,6 +35,8 @@ export class PixelFrontServer {
     this.sessionId=data.sessionId;this.playerId=data.playerId;return data;
   }
   async spawn(tile) { return call(`/game/${encodeURIComponent(this.sessionId)}/spawn`,{method:"POST",body:JSON.stringify({tile})}) }
-  async command(command) { return call(`/game/${encodeURIComponent(this.sessionId)}/command`,{method:"POST",body:JSON.stringify({command})}) }
+  toServerNation(id){return this.playerId===0?id:id===0?this.playerId:id===this.playerId?0:id}
+  toLocalNation(id){return this.toServerNation(id)}
+  async command(command) { command={...command};if(Number.isInteger(command.targetOwner))command.targetOwner=this.toServerNation(command.targetOwner);if(Number.isInteger(command.target))command.target=this.toServerNation(command.target);return call(`/game/${encodeURIComponent(this.sessionId)}/command`,{method:"POST",body:JSON.stringify({command})}) }
   async state(full=true) { return call(`/game/${encodeURIComponent(this.sessionId)}/state?full=${full?1:0}`) }
 }
