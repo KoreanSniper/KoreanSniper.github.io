@@ -1,4 +1,4 @@
-import { auth, db } from "../community/js/firebase.js";
+import { auth, db } from "./auth/firebase.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, getDoc, setDoc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { PixelFrontServer } from "./sites-game-server.js";
@@ -7,12 +7,12 @@ const ROOMS = "pixelfrontRooms";
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const roomRef = code => doc(db, ROOMS, code);
 const cleanCode = value => String(value || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
-const nameOf = () => String(document.querySelector("#playerName")?.value || "플레이어").trim().slice(0, 14) || "플레이어";
+const nameOf = () => String(document.querySelector("#playerName")?.value || "?뚮젅?댁뼱").trim().slice(0, 14) || "?뚮젅?댁뼱";
 
 async function user() {
   if (auth.currentUser) return auth.currentUser;
   try { return (await signInAnonymously(auth)).user; }
-  catch { throw new Error("온라인 플레이를 사용하려면 먼저 Google 로그인이 필요합니다."); }
+  catch { throw new Error("?⑤씪???뚮젅?대? ?ъ슜?섎젮硫?癒쇱? Google 濡쒓렇?몄씠 ?꾩슂?⑸땲??"); }
 }
 
 async function unusedCode() {
@@ -21,7 +21,7 @@ async function unusedCode() {
     for (let i = 0; i < 6; i++) code += alphabet[Math.random() * alphabet.length | 0];
     if (!(await getDoc(roomRef(code))).exists()) return code;
   }
-  throw new Error("방 코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  throw new Error("諛?肄붾뱶瑜?留뚮뱾吏 紐삵뻽?듬땲?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??");
 }
 
 export async function createFirebaseRoom(settings = {}) {
@@ -40,14 +40,14 @@ export async function createFirebaseRoom(settings = {}) {
 export async function joinFirebaseRoom(rawCode) {
   const me = await user();
   const code = cleanCode(rawCode);
-  if (code.length !== 6) throw new Error("6자리 방 코드를 입력해 주세요.");
+  if (code.length !== 6) throw new Error("6?먮━ 諛?肄붾뱶瑜??낅젰??二쇱꽭??");
   await runTransaction(db, async tx => {
     const ref = roomRef(code), snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error("존재하지 않는 방입니다.");
+    if (!snap.exists()) throw new Error("議댁옱?섏? ?딅뒗 諛⑹엯?덈떎.");
     const room = snap.data();
-    if (room.status !== "waiting") throw new Error("이미 시작된 방입니다.");
+    if (room.status !== "waiting") throw new Error("?대? ?쒖옉??諛⑹엯?덈떎.");
     const players = (room.players || []).filter(p => p.uid !== me.uid);
-    if (players.length >= 8) throw new Error("방이 가득 찼습니다.");
+    if (players.length >= 8) throw new Error("諛⑹씠 媛??李쇱뒿?덈떎.");
     players.push({ uid: me.uid, name: nameOf(), joinedAt: Date.now(), host: false });
     tx.update(ref, { players, playerIds: players.map(p => p.uid), updatedAt: serverTimestamp() });
   });
@@ -62,7 +62,7 @@ export async function startFirebaseRoom(code) {
   const me = await user(), ref = roomRef(cleanCode(code));
   await runTransaction(db, async tx => {
     const snap = await tx.get(ref);
-    if (!snap.exists() || snap.data().hostId !== me.uid) throw new Error("호스트만 게임을 시작할 수 있습니다.");
+    if (!snap.exists() || snap.data().hostId !== me.uid) throw new Error("?몄뒪?몃쭔 寃뚯엫???쒖옉?????덉뒿?덈떎.");
     tx.update(ref, { status: "starting", startedAt: serverTimestamp(), updatedAt: serverTimestamp() });
   });
 }

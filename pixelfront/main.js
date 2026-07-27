@@ -38,10 +38,10 @@ function applyAuthority(state){
   if(!state?.nations)return;
   if(state.ownerSnapshot){
     const owner=decodeOwnerSnapshot(state.ownerSnapshot,e.owner.length);e.changedTiles??=new Set;
-    for(let i=0;i<owner.length;i++)if(e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
+    for(let i=0;i<owner.length;i++)if(owner[i]!==-3&&e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
     r.visionTick=-1
   }
-  for(const saved of state.nations){const nation=e.nations[gameServer.toLocalNation(saved.id)];if(!nation)continue;nation.troops=saved.troops;nation.spawn=saved.spawn;nation.alive=saved.alive;nation.name=saved.name}
+  for(const saved of state.nations){const nation=e.nations[gameServer.toLocalNation(saved.id)];if(!nation)continue;if(saved.troops!=null)nation.troops=saved.troops;if(saved.spawn!=null)nation.spawn=saved.spawn;if(saved.alive!=null)nation.alive=saved.alive;nation.name=saved.name}
   if(state.buildings&&e.buildings){e.buildings.fill(0);for(const nation of e.nations)nation.buildingTiles?.clear();for(const[tile,type]of state.buildings){const owner=e.owner[tile];if(owner>=0){e.buildings[tile]=type;e.nations[owner].buildingTiles?.add(tile)}}}
   if(state.relations)e.relations=Array.from({length:e.nations.length},(_,a)=>Array.from({length:e.nations.length},(_,b)=>state.relations[gameServer.toServerNation(a)]?.[gameServer.toServerNation(b)]??0));
   if(state.navalMissions)e.navalMissions=state.navalMissions.map(m=>({...m,attacker:gameServer.toLocalNation(m.attacker),defender:gameServer.toLocalNation(m.defender)}));
@@ -71,7 +71,7 @@ e.launchNaval=(playerId,tile,value)=>{if(playerId!==0)return navalLocal(playerId
 e.setRelation=(from,to,value)=>{if(from!==0&&to!==0)return relationLocal(from,to,value);e.authorityCommand({type:"relation",target:to,value,request:false});return true};
 e.requestPact=(from,to,value)=>{if(from!==0)return pactLocal(from,to,value);e.authorityCommand({type:"relation",target:to,value,request:true});return true};
 const saveTools=document.createElement("div");saveTools.className="file-save-tools";saveTools.innerHTML='<button type="button" data-save>PXFO 저장</button><button type="button" data-load>PXFO 불러오기</button><input type="file" accept=".pxfo,application/x-pixelfront+json" hidden>';document.querySelector(".game-shell").append(saveTools);saveTools.querySelector("[data-save]").onclick=()=>{try{exportGameFile(e,opts);toast(".pxfo 저장 파일을 만들었습니다")}catch(error){toast(error.message)}};const fileInput=saveTools.querySelector("input");saveTools.querySelector("[data-load]").onclick=()=>fileInput.click();fileInput.onchange=async()=>{try{await importGameFile(fileInput.files?.[0]);location.href="./play.html?continue=1"}catch(error){toast(error.message)}finally{fileInput.value=""}};
-const resumed=restoreGame(e,savedData);e.renderMission?.();if(!resumed)for(let i=1;i<e.nations.length;i++)e.autoSpawn(i);
+const resumed=restoreGame(e,savedData);e.renderMission?.();
 r.draw();
 $("#mapLoading").classList.add("hidden");if(!resumed)$("#spawnPanel").classList.remove("hidden");
 if(resumed){$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(()=>{b.step();e.step();ui();r.draw();if(!e.spectating&&!e.nations[0].alive)finish(true);else if(e.winner!==null)finish(false)},RULES.tickMs)}

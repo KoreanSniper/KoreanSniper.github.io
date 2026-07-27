@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08111a">
+  <title>PIXELFRONT ??寃뚯엫 ?ㅼ젙</title>
+  <link rel="icon" href="../BlockRail.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="./auth/global-auth.css">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="../minigame/index.html"><span>B</span> BLOCKRAIL / <b>PIXELFRONT</b></a><div class="global-auth" data-global-auth></div></header>
+  <main class="game-shell menu-screen">
+    <div class="menu-map" aria-hidden="true"></div>
+    <section class="setup panel">
+      <p class="eyebrow">INDEPENDENT TERRITORY RTS</p>
+      <h1>PIXEL<br><em>FRONT</em></h1>
+      <p>鍮좊Ⅴ寃??뺤옣?섍퀬 ?꾩꽑???딆쑝?몄슂. ?섎룄? ?⑥젅?????곹넗???곗뇙?곸쑝濡???났?⑸땲??</p>
+      <form id="gameForm">
+        <label>?뚮젅?댁뼱 ?대쫫<input id="playerName" name="name" maxlength="14" value="?뚮젅?댁뼱"></label>
+        <div class="settings">
+          <label>吏??select name="map"><option value="world">?ㅻ?瑜?/option><option value="pangaea">珥덈?瑜?/option></select></label>
+          <label>AI 援??<select name="ai"><option>5</option><option selected>8</option><option>12</option><option>16</option><option>20</option><option>30</option><option>40</option><option>50</option></select></label>
+          <label>?쒖씠??select name="difficulty"><option value="easy">?ъ?</option><option selected value="normal">蹂댄넻</option><option value="hard">?대젮?</option></select></label>
+        </div>
+        <label class="seed-setting">留??쒕뱶 <span>媛숈? 吏???좏삎怨??쒕뱶??媛숈? 吏?뺤쓣 ?앹꽦?⑸땲??</span><div><input id="seedInput" name="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1" placeholder="鍮꾩썙?먮㈃ 臾댁옉??><button id="randomSeed" type="button">臾댁옉??/button></div></label>
+        <button type="submit">???꾩옣 ?쒖옉 <span>??/span></button>
+      </form>
+      <a href="./guide.html">寃뚯엫 ?ㅻ챸 諛?議곗옉踰???/a>
+      <a href="../minigame/index.html">???꾩??대뱶濡??뚯븘媛湲?/a>
+    </section>
+  </main>
+  <script type="module" src="menu.js"></script>
+  <script type="module" src="./auth/global-auth.js"></script>
+</body>
+</html>

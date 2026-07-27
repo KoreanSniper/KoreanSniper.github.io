@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#08111a">
+  <title>PIXELFRONT ???꾪닾</title>
+  <link rel="icon" href="../BlockRail.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="./auth/global-auth.css">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./menu.html"><span>B</span> BLOCKRAIL / <b>PIXELFRONT</b></a><nav class="game-links"><a href="./guide.html">寃뚯엫 ?ㅻ챸</a><a href="./menu.html">寃뚯엫 ?ㅼ젙</a></nav><div class="global-auth" data-global-auth></div></header>
+  <main class="game-shell">
+    <canvas id="game" aria-label="?곹넗 ?꾨왂 寃뚯엫 吏??></canvas>
+    <section id="mapLoading" class="map-loading" aria-live="polite"><p class="eyebrow">WORLD GENERATOR</p><h2>?덈줈???멸퀎瑜?留뚮뱶??以?/h2><div class="loading-bar"><i id="loadingFill"></i></div><strong id="loadingPercent">0%</strong><ul><li data-stage="terrain"><b>??/b><span>吏???앹꽦 以?/span></li><li data-stage="erosion"><b>??/b><span>?먯뿰?ㅻ읇寃?源롫뒗 以?/span></li><li data-stage="rivers"><b>??/b><span>媛??앹꽦 以?/span></li><li data-stage="finalize"><b>??/b><span>?꾩옣 以鍮?以?/span></li></ul></section>
+    <section id="spawnPanel" class="spawn-card hidden"><small>DEPLOYMENT</small><span class="seed-code" id="seedLabel">SEED</span><strong>?쒖옉 ?꾩튂瑜??좏깮?섏꽭??/strong><p>?댁븞怨??ㅻⅨ 援???먯꽌 ?⑥뼱吏??볦? ?≪?瑜?怨좊Ⅴ?몄슂.</p><button id="randomSpawn">臾댁옉???꾩튂</button></section>
+    <section id="hud" class="hud hidden"><div><small>TROOPS</small><strong id="troops">0</strong></div><div><small>TERRITORY</small><strong id="territory">0</strong></div><div><small>RANK</small><strong id="rank">-</strong></div><div><small>TIME</small><strong id="time">00:00</strong></div></section>
+    <aside id="leaderboard" class="leaderboard hidden"><header><span>WORLD RANKING</span><b id="alive">0 ALIVE</b></header><ol id="ranking"></ol></aside>
+    <section id="attackControl" class="attack-control hidden"><div><span>怨듦꺽 蹂묐젰</span><strong id="percentText">25%</strong></div><input id="attackPercent" type="range" min="5" max="90" value="25"><div class="presets"><button data-percent="10">10</button><button data-percent="25" class="active">25</button><button data-percent="50">50</button><button data-percent="80">80</button></div><small>以묐┰吏 ?먮뒗 ??援?????꾨Т ?곹넗瑜??대┃?섏꽭??</small></section>
+    <div class="map-help hidden" id="mapHelp"><span>?쒕옒洹??대룞</span><span>???뺣?</span><span>?대┃ 怨듦꺽</span><span>?고겢由??멸탳쨌嫄댁꽕</span></div>
+    <section id="result" class="result panel hidden"><p class="eyebrow">BATTLE COMPLETE</p><h2 id="resultTitle">?밸━</h2><p id="resultText"></p><button id="replay">媛숈? ?ㅼ젙?쇰줈 ?ㅼ떆</button><a href="./menu.html">寃뚯엫 ?ㅼ젙?쇰줈 ?섍?湲?/a></section>
+    <div id="toast" class="toast" role="status"></div>
+  </main>
+  <script type="module" src="main.js"></script>
+  <script type="module" src="./auth/global-auth.js"></script>
+</body>
+</html>

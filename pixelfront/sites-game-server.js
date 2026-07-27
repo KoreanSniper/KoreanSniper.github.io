@@ -1,17 +1,17 @@
-import { auth } from "../community/js/firebase.js";
+import { auth } from "./auth/firebase.js";
 
 const API_BASE = globalThis.PIXELFRONT_API_BASE || localStorage.getItem("pixelfront-api-base") || "https://pixelfront-authority.seoul2linejh.workers.dev";
 
 async function call(path, init = {}) {
   await auth.authStateReady?.();
   const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("게임 서버를 사용하려면 먼저 로그인해야 합니다.");
+  if (!token) throw new Error("寃뚯엫 ?쒕쾭瑜??ъ슜?섎젮硫?癒쇱? 濡쒓렇?명빐???⑸땲??");
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(init.headers || {}) },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `게임 서버 오류 (${response.status})`);
+  if (!response.ok) throw new Error(data.error || `寃뚯엫 ?쒕쾭 ?ㅻ쪟 (${response.status})`);
   return data;
 }
 
@@ -20,7 +20,7 @@ export function decodeOwnerSnapshot(encoded, length) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   const pairs = new Int32Array(bytes.buffer), owner = new Int16Array(length); let cursor = 0;
   for (let i = 0; i < pairs.length; i += 2) owner.fill(pairs[i], cursor, cursor += pairs[i + 1]);
-  if (cursor !== length) throw new Error("서버 지도 스냅샷이 손상되었습니다.");
+  if (cursor !== length) throw new Error("?쒕쾭 吏???ㅻ깄?룹씠 ?먯긽?섏뿀?듬땲??");
   return owner;
 }
 
