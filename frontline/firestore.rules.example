@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /pixelfrontRooms/{roomCode} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.hostId == request.auth.uid;
+      allow update: if request.auth != null && request.resource.data.players.size() <= 8;
+      allow delete: if request.auth != null && resource.data.hostId == request.auth.uid;
+    }
+  }
+}

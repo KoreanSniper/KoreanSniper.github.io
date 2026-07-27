@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#08111a">
+  <title>PIXELFRONT — 전투</title>
+  <link rel="icon" href="../BlockRail.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="../community/css/global-auth.css">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./menu.html"><span>B</span> BLOCKRAIL / <b>PIXELFRONT</b></a><nav class="game-links"><a href="./guide.html">게임 설명</a><a href="./menu.html">게임 설정</a></nav><div class="global-auth" data-global-auth></div></header>
+  <main class="game-shell">
+    <canvas id="game" aria-label="영토 전략 게임 지도"></canvas>
+    <section id="mapLoading" class="map-loading" aria-live="polite"><p class="eyebrow">WORLD GENERATOR</p><h2>새로운 세계를 만드는 중</h2><div class="loading-bar"><i id="loadingFill"></i></div><strong id="loadingPercent">0%</strong><ul><li data-stage="terrain"><b>▢</b><span>지형 생성 중</span></li><li data-stage="erosion"><b>▢</b><span>자연스럽게 깎는 중</span></li><li data-stage="rivers"><b>▢</b><span>강 생성 중</span></li><li data-stage="finalize"><b>▢</b><span>전장 준비 중</span></li></ul></section>
+    <section id="spawnPanel" class="spawn-card hidden"><small>DEPLOYMENT</small><span class="seed-code" id="seedLabel">SEED</span><strong>시작 위치를 선택하세요</strong><p>해안과 다른 국가에서 떨어진 넓은 육지를 고르세요.</p><button id="randomSpawn">무작위 위치</button></section>
+    <section id="hud" class="hud hidden"><div><small>TROOPS</small><strong id="troops">0</strong></div><div><small>TERRITORY</small><strong id="territory">0</strong></div><div><small>RANK</small><strong id="rank">-</strong></div><div><small>TIME</small><strong id="time">00:00</strong></div></section>
+    <aside id="leaderboard" class="leaderboard hidden"><header><span>WORLD RANKING</span><b id="alive">0 ALIVE</b></header><ol id="ranking"></ol></aside>
+    <section id="attackControl" class="attack-control hidden"><div><span>공격 병력</span><strong id="percentText">25%</strong></div><input id="attackPercent" type="range" min="5" max="90" value="25"><div class="presets"><button data-percent="10">10</button><button data-percent="25" class="active">25</button><button data-percent="50">50</button><button data-percent="80">80</button></div><small>중립지 또는 적 국가의 아무 영토를 클릭하세요.</small></section>
+    <div class="map-help hidden" id="mapHelp"><span>드래그 이동</span><span>휠 확대</span><span>클릭 공격</span><span>우클릭 외교·건설</span></div>
+    <section id="result" class="result panel hidden"><p class="eyebrow">BATTLE COMPLETE</p><h2 id="resultTitle">승리</h2><p id="resultText"></p><button id="replay">같은 설정으로 다시</button><a href="./menu.html">게임 설정으로 나가기</a></section>
+    <div id="toast" class="toast" role="status"></div>
+  </main>
+  <script type="module" src="main.js"></script>
+  <script type="module" src="../community/js/global-auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+import{Engine}from"./engine.js";
+const baseStep=Engine.prototype.step;
+Engine.prototype.step=function(){baseStep.call(this);this.landCount??=this.map.land.reduce((sum,v)=>sum+v,0);let leader=null;for(const nation of this.nations)if(!leader||nation.tiles.size>leader.tiles.size)leader=nation;const share=leader?leader.tiles.size/Math.max(1,this.landCount):0;if(this.continueAfterVictory){if(this.winner!==null){this.winner=null;this.running=true}return}if(leader&&share>=.95){this.winner=leader.id;this.running=false;return}if(this.winner!==null&&leader&&share<.95){this.winner=null;this.running=true}};
