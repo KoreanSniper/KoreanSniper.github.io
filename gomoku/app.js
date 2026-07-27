@@ -95,6 +95,9 @@ const ui = {
   roomId: null,
   authorityRoomId: null,
   authorityTimer: null,
+  presenceTimer: null,
+  exitToken: null,
+  exitDeleteSent: false,
   seat: null,
   host: false,
   unsubscribe: null,
@@ -580,6 +583,25 @@ function stopAiTimer() {
   session.aiThinking = false;
 }
 
+function startRoomPresence(roomRef) {
+  if (!roomRef || session.presenceTimer) return;
+  const beat = async () => {
+    if (session.mode !== "online" || session.roomRef?.id !== roomRef.id) return;
+    try { await updateDoc(roomRef, { updatedAt:serverTimestamp() }); }
+    catch (error) { console.warn("Gomoku presence update failed", error); }
+  };
+  void beat();
+  session.presenceTimer = setInterval(beat, 5000);
+}
+
+function deleteRoomKeepalive() {
+  if (session.exitDeleteSent || session.mode !== "online" || !session.roomId || !session.exitToken) return;
+  session.exitDeleteSent = true;
+  const roomId = encodeURIComponent(session.roomId);
+  const url = `https://firestore.googleapis.com/v1/projects/koreansniper-github-io/databases/(default)/documents/gomokuRooms/${roomId}`;
+  fetch(url, { method:"DELETE", headers:{ authorization:`Bearer ${session.exitToken}` }, keepalive:true }).catch(() => {});
+}
+
 function clearOnlineListeners() {
   if (session.timeoutId) {
     clearTimeout(session.timeoutId);
@@ -596,6 +618,10 @@ function clearOnlineListeners() {
   if (session.authorityTimer) {
     clearInterval(session.authorityTimer);
     session.authorityTimer = null;
+  }
+  if (session.presenceTimer) {
+    clearInterval(session.presenceTimer);
+    session.presenceTimer = null;
   }
 }
 
@@ -622,6 +648,8 @@ function stopOnlineSession() {
   session.roomRef = null;
   session.roomId = null;
   session.authorityRoomId = null;
+  session.exitToken = null;
+  session.exitDeleteSent = false;
   session.seat = null;
   session.host = false;
   session.roomStatus = null;
@@ -695,12 +723,14 @@ async function leaveOnlineRoomBestEffort() {
   }
 }
 
-window.addEventListener("pagehide", () => {
+window.addEventListener("pagehide", event => {
+  if (event.persisted) return;
+  deleteRoomKeepalive();
   void leaveOnlineRoomBestEffort();
 });
 
 window.addEventListener("beforeunload", () => {
-  void leaveOnlineRoomBestEffort();
+  deleteRoomKeepalive();
 });
 
 async function goHome() {
@@ -2104,6 +2134,7 @@ async function startOnlineMatch() {
   }
 
   const identity = await ensureIdentity();
+  let pendingRoomRef = null;
   try {
     await cleanupStaleWaitingRooms();
 
@@ -2111,6 +2142,7 @@ async function startOnlineMatch() {
     const waitingSnapshot = await getDocs(waitingQuery);
 
     for (const roomDoc of waitingSnapshot.docs) {
+      if (isRoomStale(roomDoc.data(), 30000)) continue;
       const joined = await tryJoinRoom(roomDoc.ref, identity);
       if (joined) {
         attachRoomListener(roomDoc.ref, false);
@@ -2134,18 +2166,15 @@ async function startOnlineMatch() {
       state: normalizeState(createInitialState()),
     });
 
-    await setDoc(doc(db, MATCHMAKING_COLLECTION, MATCHMAKING_DOC), {
-      roomId: roomRef.id,
-      hostId: identity.id,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-
+    pendingRoomRef = roomRef;
     session.roomRef = roomRef;
     session.roomId = roomRef.id;
     session.authorityRoomId = authority.roomId;
     session.seat = "X";
     session.host = true;
     session.roomStatus = "waiting";
+    session.exitToken = await auth.currentUser?.getIdToken();
+    startRoomPresence(roomRef);
     attachRoomListener(roomRef, true);
     subscribeRoomChat(roomRef);
     session.timeoutId = setTimeout(() => fallbackToAiIfWaiting(roomRef), MATCH_WAIT_MS);
@@ -2153,6 +2182,7 @@ async function startOnlineMatch() {
     renderAll();
   } catch (error) {
     console.error(error);
+    if (pendingRoomRef) await deleteOnlineRoom(pendingRoomRef);
     startLocalAIMatch("온라인 매칭 중 문제가 생겼습니다.");
   }
 }
@@ -2240,6 +2270,8 @@ async function tryJoinRoom(roomRef, identity) {
     session.seat = "O";
     session.host = false;
     session.roomStatus = "active";
+    session.exitToken = await auth.currentUser?.getIdToken();
+    startRoomPresence(roomRef);
   }
   return joined;
 }
@@ -2272,7 +2304,7 @@ function attachRoomListener(roomRef, hostCreated) {
     session.roomId = snap.id;
     if (room.authorityRoomId) {
       session.authorityRoomId = room.authorityRoomId;
-      if (room.status === "active" || room.status === "ended") startAuthorityGomokuSync();
+      if (room.status === "active" || room.status === "ended") { startAuthorityGomokuSync(); if (session.mode === "online" && session.seat) startRoomPresence(roomRef); }
       else { gameState = normalizeState(room.state); renderAll(); }
       return;
     }
@@ -2455,6 +2487,7 @@ function subscribeLobbyRooms() {
   session.lobbyUnsubscribe = onSnapshot(lobbyQuery, (snapshot) => {
     session.lobbyRooms = snapshot.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter((room) => !isRoomStale(room, 30000))
       .sort((a, b) => {
         const left = a.updatedAt?.toMillis?.() || 0;
         const right = b.updatedAt?.toMillis?.() || 0;
