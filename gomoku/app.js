@@ -93,6 +93,8 @@ const ui = {
   mode: "idle",
   roomRef: null,
   roomId: null,
+  authorityRoomId: null,
+  authorityTimer: null,
   seat: null,
   host: false,
   unsubscribe: null,
@@ -171,6 +173,39 @@ onAuthStateChanged(auth, handleAuthStateChanged);
   })();
 
   return firebaseLoadPromise;
+}
+
+const GOMOKU_AUTHORITY_URL = "https://pixelfront-authority.seoul2linejh.workers.dev";
+
+async function gomokuAuthorityCall(path, init = {}) {
+  if (!(await ensureFirebase())) throw new Error("FIREBASE_UNAVAILABLE");
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error("LOGIN_REQUIRED");
+  const response = await fetch(`${GOMOKU_AUTHORITY_URL}${path}`, {
+    ...init,
+    headers: { "content-type":"application/json", authorization:`Bearer ${token}`, ...(init.headers || {}) },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `AUTHORITY_ERROR_${response.status}`);
+  return data;
+}
+const gomokuAuthorityCreate = () => gomokuAuthorityCall("/gomoku", { method:"POST", body:"{}" });
+const gomokuAuthorityJoin = roomId => gomokuAuthorityCall(`/gomoku/${encodeURIComponent(roomId)}/join`, { method:"POST", body:"{}" });
+const gomokuAuthorityMove = (roomId, index) => gomokuAuthorityCall(`/gomoku/${encodeURIComponent(roomId)}/move`, { method:"POST", body:JSON.stringify({index}) });
+const gomokuAuthorityState = roomId => gomokuAuthorityCall(`/gomoku/${encodeURIComponent(roomId)}/state`);
+
+async function syncAuthorityGomoku() {
+  if (!session.authorityRoomId) return;
+  try {
+    const result = await gomokuAuthorityState(session.authorityRoomId);
+    session.roomStatus = result.status;
+    gameState = normalizeState(result.state);
+    renderAll();
+  } catch (error) { console.warn("Gomoku authority sync failed", error); }
+}
+function startAuthorityGomokuSync() {
+  if (!session.authorityTimer) session.authorityTimer = setInterval(syncAuthorityGomoku, 750);
+  void syncAuthorityGomoku();
 }
 
 function handleAuthStateChanged(user) {
@@ -558,6 +593,10 @@ function clearOnlineListeners() {
     session.chatUnsubscribe();
     session.chatUnsubscribe = null;
   }
+  if (session.authorityTimer) {
+    clearInterval(session.authorityTimer);
+    session.authorityTimer = null;
+  }
 }
 
 function clearLobbyListener() {
@@ -582,6 +621,7 @@ function stopOnlineSession() {
   }
   session.roomRef = null;
   session.roomId = null;
+  session.authorityRoomId = null;
   session.seat = null;
   session.host = false;
   session.roomStatus = null;
@@ -1864,6 +1904,12 @@ async function commitOnlineMove(move) {
     return;
   }
 
+  if (session.authorityRoomId) {
+    try { const result = await gomokuAuthorityMove(session.authorityRoomId, move.to); session.roomStatus = result.status; gameState = normalizeState(result.state); renderAll(); }
+    catch (error) { console.error(error); setNotice(error.message === "NOT_YOUR_TURN" ? "Not your turn." : "Server rejected the move."); }
+    return;
+  }
+
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(roomRef);
@@ -1895,6 +1941,7 @@ async function commitOnlineMove(move) {
 
 async function activateRailgun() {
   if (session.mode === "online" && session.roomRef) {
+    if (session.authorityRoomId) { setNotice("Railgun is disabled in authoritative online matches."); return; }
     await commitOnlineRailgun();
     return;
   }
@@ -2074,8 +2121,10 @@ async function startOnlineMatch() {
       }
     }
 
+    const authority = await gomokuAuthorityCreate();
     const roomRef = await addDoc(collection(db, ROOM_COLLECTION), {
       status: "waiting",
+      authorityRoomId: authority.roomId,
       hostId: identity.id,
       hostName: identity.name,
       guestId: null,
@@ -2093,6 +2142,7 @@ async function startOnlineMatch() {
 
     session.roomRef = roomRef;
     session.roomId = roomRef.id;
+    session.authorityRoomId = authority.roomId;
     session.seat = "X";
     session.host = true;
     session.roomStatus = "waiting";
@@ -2161,13 +2211,14 @@ async function watchGomokuRoom(roomId) {
 }
 
 async function tryJoinRoom(roomRef, identity) {
-  let joined = false;
+  let joined = false, authorityRoomId = null;
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(roomRef);
       if (!snap.exists()) return;
       const room = snap.data();
-      if (room.status !== "waiting" || room.guestId || room.hostId === identity.id) return;
+      if (room.status !== "waiting" || room.guestId || room.hostId === identity.id || !room.authorityRoomId) return;
+      authorityRoomId = room.authorityRoomId;
       tx.update(roomRef, {
         status: "active",
         guestId: identity.id,
@@ -2181,8 +2232,11 @@ async function tryJoinRoom(roomRef, identity) {
   }
 
   if (joined) {
+    try { await gomokuAuthorityJoin(authorityRoomId); }
+    catch (error) { console.error(error); return false; }
     session.roomRef = roomRef;
     session.roomId = roomRef.id;
+    session.authorityRoomId = authorityRoomId;
     session.seat = "O";
     session.host = false;
     session.roomStatus = "active";
@@ -2216,6 +2270,12 @@ function attachRoomListener(roomRef, hostCreated) {
     const room = snap.data();
     session.roomStatus = room.status;
     session.roomId = snap.id;
+    if (room.authorityRoomId) {
+      session.authorityRoomId = room.authorityRoomId;
+      if (room.status === "active" || room.status === "ended") startAuthorityGomokuSync();
+      else { gameState = normalizeState(room.state); renderAll(); }
+      return;
+    }
 
     if (room.status === "waiting" && hostCreated) {
       gameState = normalizeState(room.state);
