@@ -19,7 +19,7 @@ import{installAchievements,updateAchievementUI}from"./achievements.js";
 import{installCommanders,updateCommanderUI}from"./commanders.js";
 import{installEspionage,updateEspionageUI}from"./espionage.js";
 import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js";
-import{PixelFrontServer}from"./sites-game-server.js";
+import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js";
 
 const $=s=>document.querySelector(s),canvas=$("#game"),params=new URLSearchParams(location.search);
 const savedData=params.get("continue")==="1"?readGame():null,savedOpts=savedData?.opts||{};
@@ -31,10 +31,22 @@ async function generateMap(seed,mapType){loadingProgress("terrain",2);if(typeof 
 const generatedMap=await generateMap(selectedSeed,opts.mapType);
 let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(canvas,e),b=new Bots(e,opts.difficulty),timer,percent=25,drag=false,moved=false,last={x:0,y:0};
 const gameServer=new PixelFrontServer();
-const gameServerReady=gameServer.create({mode:"single",seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount}).catch(error=>{toast("서버 연결이 필요합니다. 로그인 상태를 확인하세요.");console.warn("PIXELFRONT server unavailable",error);return null});
+const gameServerReady=gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty}).catch(error=>{toast("서버 연결이 필요합니다. 로그인 상태를 확인하세요.");console.warn("PIXELFRONT server unavailable",error);return null});
 const issueLocal=e.issue.bind(e);
-function applyAuthority(state){if(!state?.nations)return;for(const saved of state.nations){const nation=e.nations[saved.id];if(!nation)continue;nation.troops=saved.troops;if(!saved.alive)nation.alive=false}}
-e.issue=command=>{if(command.playerId!==0)return issueLocal(command);gameServerReady.then(session=>{if(!session)throw new Error("SERVER_UNAVAILABLE");return gameServer.command(command)}).then(result=>{applyAuthority(result.state);issueLocal(result.command)}).catch(error=>{toast("서버가 명령을 거부했습니다.");console.warn("PIXELFRONT command rejected",error)});return true};
+let authoritySync=null,syncBusy=false;
+function applyAuthority(state){
+  if(!state?.nations)return;
+  if(state.ownerSnapshot){
+    const owner=decodeOwnerSnapshot(state.ownerSnapshot,e.owner.length);e.changedTiles??=new Set;
+    for(let i=0;i<owner.length;i++)if(e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
+    r.visionTick=-1
+  }
+  for(const saved of state.nations){const nation=e.nations[saved.id];if(!nation)continue;nation.troops=saved.troops;nation.spawn=saved.spawn;nation.alive=saved.alive}
+  e.tick=Math.max(e.tick,state.tick||0);e.running=state.running!==false;e.winner=state.winner??null
+}
+async function syncAuthority(){if(syncBusy||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(true)).state)}catch(error){console.warn("PIXELFRONT sync failed",error)}finally{syncBusy=false}}
+function startAuthoritySync(){if(!authoritySync)authoritySync=setInterval(syncAuthority,1000)}
+e.issue=command=>{if(command.playerId!==0)return issueLocal(command);gameServerReady.then(session=>{if(!session)throw new Error("SERVER_UNAVAILABLE");return gameServer.command(command)}).then(result=>{applyAuthority(result.state);issueLocal(command)}).catch(error=>{toast("서버가 명령을 거부했습니다.");console.warn("PIXELFRONT command rejected",error)});return true};
 $("#seedLabel").textContent=`SEED ${e.map.seed>>>0}`;
 const queueUI=installQueueUI(e);
 installNaval();
@@ -56,9 +68,11 @@ $("#mapLoading").classList.add("hidden");if(!resumed)$("#spawnPanel").classList.
 if(resumed){$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(()=>{b.step();e.step();ui();r.draw();if(!e.spectating&&!e.nations[0].alive)finish(true);else if(e.winner!==null)finish(false)},RULES.tickMs)}
 const idleSave=()=>{if(!e.running)return;const run=()=>saveGame(e,opts);if("requestIdleCallback"in window)requestIdleCallback(run,{timeout:4000});else setTimeout(run,0)};setInterval(idleSave,30000);addEventListener("beforeunload",()=>{if(e.running)saveGame(e,opts)});
 
-function deploy(i){
-  if(!e.spawn(0,i)){toast("해안과 다른 국가에서 떨어진 땅을 선택하세요");return}
-  e.start();r.visionTick=-1;r.visible.fill(0);r.draw();
+async function deploy(i){
+  try{const session=await gameServerReady;if(!session)throw new Error("SERVER_UNAVAILABLE");const result=await gameServer.spawn(i);applyAuthority(result.state)}
+  catch(error){toast("서버가 시작 위치를 거부했습니다.");console.warn("PIXELFRONT spawn rejected",error);return}
+  if(e.nations[0].spawn<0&&!e.spawn(0,i)){toast("해안과 다른 국가에서 떨어진 땅을 선택하세요");return}
+  e.start();startAuthoritySync();r.visionTick=-1;r.visible.fill(0);r.draw();
   $("#spawnPanel").classList.add("hidden");
   ["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));
   queueUI.show();timeControls.show();ui();
