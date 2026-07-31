@@ -5,7 +5,7 @@ import"./victory.js";
 import{Bots}from"./ai.js";
 import{Renderer,short}from"./renderer.js";
 import"./visibility.js";
-import{installDiplomacy}from"./diplomacy.js";
+import{installDiplomacy}from"./diplomacy.js?v=2";
 import{installQueueUI}from"./queue-ui.js";
 import{installNaval}from"./naval.js";
 import{installTerrainVisual}from"./terrain-visual.js";
@@ -19,7 +19,7 @@ import{installAchievements,updateAchievementUI}from"./achievements.js";
 import{installCommanders,updateCommanderUI}from"./commanders.js";
 import{installEspionage,updateEspionageUI}from"./espionage.js";
 import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js";
-import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js?v=2";
+import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js?v=3";
 import{auth}from"./auth/firebase.js";
 
 const $=s=>document.querySelector(s),canvas=$("#game"),params=new URLSearchParams(location.search),onlineSession=params.get("session");
@@ -54,8 +54,7 @@ let authorityFailures=0;
 const pendingCommands=new Set();
 const isAuthorityOutage=error=>!error?.status||error.status>=500;
 const authorityMessage=error=>error?.code==="TARGET_NOT_VISIBLE"?"서버 시야에서 아직 확인되지 않은 목표입니다. 잠시 후 다시 시도하세요.":error?.code==="INVALID_TARGET"?"현재 공격할 수 없는 목표입니다.":error?.message||"서버가 명령을 거부했습니다.";
-let authoritySyncCount=0;
-async function syncAuthority(){if(syncBusy||!authorityAvailable||!gameServer.sessionId)return;syncBusy=true;try{const full=authoritySyncCount++%4===0;applyAuthority((await gameServer.state(full)).state);authorityFailures=0;ui();r.draw()}catch(error){authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;clearInterval(authoritySync);authoritySync=null;console.warn("PIXELFRONT authority disabled after repeated sync failures",error)}else if(authorityFailures===1)console.warn("PIXELFRONT sync failed",error)}finally{syncBusy=false}}
+async function syncAuthority(){if(syncBusy||!authorityAvailable||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(false)).state);authorityFailures=0;ui();r.draw()}catch(error){const payloadTooBig=error?.code==="SQLITE_TOOBIG"||/SQLITE_TOOBIG|string or blob too big/i.test(error?.message||"");if(payloadTooBig){authorityFailures=0;console.info("PIXELFRONT full snapshot unavailable; lightweight sync retained")}else{authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;clearInterval(authoritySync);authoritySync=null;console.warn("PIXELFRONT authority disabled after repeated sync failures",error)}else if(authorityFailures===1)console.warn("PIXELFRONT sync failed",error)}}finally{syncBusy=false}}
 function startAuthoritySync(){if(!authoritySync)authoritySync=setInterval(syncAuthority,500)}
 e.issue=command=>{if(command.playerId!==0)return authorityAvailable?false:issueLocal(command);const key=`${command.type}:${command.targetOwner??command.target??""}`;if(pendingCommands.has(key))return false;pendingCommands.add(key);gameServerReady.then(session=>{if(!session){if(!onlineSession)return issueLocal(command);throw new Error("SERVER_UNAVAILABLE")}return gameServer.command(command).then(result=>{applyAuthority(result.state);ui();r.draw()})}).catch(error=>{if(!onlineSession&&isAuthorityOutage(error)){authorityAvailable=false;issueLocal(command);console.warn("PIXELFRONT command authority unavailable; continued locally",error)}else{toast(authorityMessage(error));if(error?.status===403)syncAuthority();else console.warn("PIXELFRONT command rejected",error)}}).finally(()=>pendingCommands.delete(key));return true};
 $("#seedLabel").textContent=`SEED ${e.map.seed>>>0}`;
@@ -137,5 +136,5 @@ document.querySelectorAll("[data-percent]").forEach(x=>x.onclick=()=>setPercent(
 function setPercent(v){percent=v;$("#attackPercent").value=v;$("#percentText").textContent=v+"%";document.querySelectorAll("[data-percent]").forEach(x=>x.classList.toggle("active",+x.dataset.percent===v))}
 canvas.onpointerdown=x=>{if(x.button===2)return;drag=true;moved=false;last={x:x.clientX,y:x.clientY};canvas.setPointerCapture(x.pointerId)};
 canvas.onpointermove=x=>{if(!drag)return;const dx=x.clientX-last.x,dy=x.clientY-last.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;if(moved){r.camera.x+=dx;r.camera.y+=dy;r.draw()}last={x:x.clientX,y:x.clientY}};
-canvas.onpointerup=x=>{if(x.button===2)return;if(e.suppressNextTap){e.suppressNextTap=false;drag=false;return}drag=false;if(moved)return;const box=canvas.getBoundingClientRect(),i=r.tile(x.clientX-box.left,x.clientY-box.top);if(!e.running)deploy(i);else if(i>=0&&!r.visible[i]){toast("현재 확인되지 않은 지역입니다");return}else if(i>=0&&e.owner[i]!==0&&e.owner[i]!==-2){const target=e.owner[i],land=e.sharedBorder(0,target).length>0,landing=e.hasNavalReserve?.(0,target);if(!land&&!landing){toast("공격 경로를 확보할 수 없습니다");return}if(!e.issue({type:"attack",playerId:0,targetOwner:target,percent})){toast("현재 공격할 수 없습니다");return}toast(landing&&!land?"상륙 공격 명령 추가":"목표 국가 공격 명령 추가")}};
+canvas.onpointerup=x=>{if(x.button===2)return;if(e.suppressNextTap){e.suppressNextTap=false;drag=false;return}drag=false;if(moved)return;const box=canvas.getBoundingClientRect(),i=r.tile(x.clientX-box.left,x.clientY-box.top);if(!e.running)deploy(i);else if(i>=0&&e.owner[i]!==0&&!r.visible[i]){toast("현재 확인되지 않은 지역입니다");return}else if(i>=0&&e.owner[i]!==0&&e.owner[i]!==-2){const target=e.owner[i],land=e.sharedBorder(0,target).length>0,landing=e.hasNavalReserve?.(0,target);if(!land&&!landing){toast("공격 경로를 확보할 수 없습니다");return}if(!e.issue({type:"attack",playerId:0,target:i,targetOwner:target,percent})){toast("현재 공격할 수 없습니다");return}toast(landing&&!land?"상륙 공격 명령 추가":"목표 국가 공격 명령 추가")}};
 canvas.onwheel=x=>{x.preventDefault();r.camera.z=Math.max(.7,Math.min(10,r.camera.z*(x.deltaY>0?.88:1.13)));r.draw()};
