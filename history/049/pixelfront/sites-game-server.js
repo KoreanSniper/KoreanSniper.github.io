@@ -11,7 +11,12 @@ async function call(path, init = {}) {
     headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(init.headers || {}) },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `게임 서버 오류 (${response.status})`);
+  if (!response.ok) {
+    const error = new Error(data.error || `게임 서버 오류 (${response.status})`);
+    error.status = response.status;
+    error.code = data.error || "SERVER_ERROR";
+    throw error;
+  }
   return data;
 }
 
