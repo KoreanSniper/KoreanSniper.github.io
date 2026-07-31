@@ -4,7 +4,14 @@
   if (!window.isSecureContext || location.protocol === "file:") return;
 
   const currentScript = document.currentScript;
-  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=3`;
+  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=4`;
+  if (!document.querySelector('script[data-blockrail-mobile-menu]')) {
+    const mobileMenu = document.createElement("script");
+    mobileMenu.src = new URL("./mobile-menu.js?v=2", currentScript?.src || location.href).href;
+    mobileMenu.defer = true;
+    mobileMenu.dataset.blockrailMobileMenu = "";
+    document.head.append(mobileMenu);
+  }
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register(swSrc, { updateViaCache: "none" }).then((registration) => {
