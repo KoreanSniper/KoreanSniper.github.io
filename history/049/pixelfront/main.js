@@ -49,7 +49,8 @@ function applyAuthority(state){
   if(state.navalMissions)e.navalMissions=state.navalMissions.map(m=>({...m,attacker:gameServer.toLocalNation(m.attacker),defender:gameServer.toLocalNation(m.defender)}));
   e.tick=Math.max(e.tick,state.tick||0);e.running=state.running!==false;e.winner=state.winner??null
 }
-async function syncAuthority(){if(syncBusy||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(true)).state)}catch(error){console.warn("PIXELFRONT sync failed",error)}finally{syncBusy=false}}
+let authorityFailures=0;
+async function syncAuthority(){if(syncBusy||!authorityAvailable||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(true)).state);authorityFailures=0}catch(error){authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;clearInterval(authoritySync);authoritySync=null;console.warn("PIXELFRONT authority disabled after repeated sync failures",error)}else if(authorityFailures===1)console.warn("PIXELFRONT sync failed",error)}finally{syncBusy=false}}
 function startAuthoritySync(){if(!authoritySync)authoritySync=setInterval(syncAuthority,1000)}
 e.issue=command=>{if(command.playerId!==0)return issueLocal(command);gameServerReady.then(session=>{if(!session){if(!onlineSession)return issueLocal(command);throw new Error("SERVER_UNAVAILABLE")}return gameServer.command(command).then(result=>{applyAuthority(result.state);issueLocal(command)})}).catch(error=>{if(!onlineSession){authorityAvailable=false;issueLocal(command);console.warn("PIXELFRONT command authority unavailable; continued locally",error)}else{toast(error.message||"서버가 명령을 거부했습니다.");console.warn("PIXELFRONT command rejected",error)}});return true};
 $("#seedLabel").textContent=`SEED ${e.map.seed>>>0}`;
@@ -67,7 +68,7 @@ installAchievements(e,toast);
 installCommanders(e,toast);
 installEspionage(e,r,toast);
 const constructLocal=e.constructBuilding?.bind(e),navalLocal=e.launchNaval?.bind(e),relationLocal=e.setRelation?.bind(e),pactLocal=e.requestPact?.bind(e);
-e.authorityCommand=command=>gameServer.command(command).then(result=>{applyAuthority(result.state);return result}).catch(error=>{toast("서버가 명령을 거부했습니다.");console.warn("PIXELFRONT authority command rejected",error);return null});
+e.authorityCommand=command=>gameServer.command(command).then(result=>{authorityFailures=0;applyAuthority(result.state);return result}).catch(error=>{authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;if(authoritySync){clearInterval(authoritySync);authoritySync=null}toast("서버 연결이 불안정해 로컬 모드로 전환했습니다.")}else toast(error.message||"서버가 명령을 거부했습니다.");console.warn("PIXELFRONT authority command rejected",error);return null});
 e.constructBuilding=(playerId,tile,type)=>{if(playerId!==0||!authorityAvailable)return constructLocal(playerId,tile,type);e.authorityCommand({type:"build",tile,building:type});return{ok:true,message:"건설 승인을 요청했습니다."}};
 e.launchNaval=(playerId,tile,value)=>{if(playerId!==0||!authorityAvailable)return navalLocal(playerId,tile,value);e.authorityCommand({type:"naval",tile,percent:value});return{ok:true,message:"상륙 명령 승인을 요청했습니다."}};
 e.setRelation=(from,to,value)=>{if((from!==0&&to!==0)||!authorityAvailable)return relationLocal(from,to,value);e.authorityCommand({type:"relation",target:to,value,request:false});return true};
