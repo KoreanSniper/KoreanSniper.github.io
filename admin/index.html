@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>관리자 센터 — BlockRail</title>
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html"><span>B</span> BLOCKRAIL</a>
+    <div><span id="account"></span><button id="logoutBtn" hidden>로그아웃</button></div>
+  </header>
+
+  <main>
+    <section id="gate" class="gate">
+      <p class="eyebrow">RESTRICTED AREA</p>
+      <h1>관리자 센터</h1>
+      <p>승인된 Google 관리자 계정으로 로그인하세요.</p>
+      <button id="loginBtn" class="primary">Google로 관리자 로그인</button>
+      <p id="gateMessage" class="message"></p>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="hero">
+        <div><p class="eyebrow">OPERATIONS CONSOLE</p><h1>신고와 활동 기록</h1></div>
+        <button id="refreshBtn">새로고침</button>
+      </div>
+      <div class="stats">
+        <article><small>처리 대기</small><strong id="pendingCount">0</strong></article>
+        <article><small>전체 신고</small><strong id="reportCount">0</strong></article>
+        <article><small>활동 로그</small><strong id="logCount">0</strong></article>
+      </div>
+
+      <nav class="tabs" aria-label="관리자 데이터">
+        <button class="active" data-tab="reports">신고 내역</button>
+        <button data-tab="logs">활동 로그</button>
+      </nav>
+
+      <section id="reportsPanel" class="panel">
+        <div class="filters">
+          <select id="statusFilter" aria-label="처리 상태"><option value="all">전체 상태</option><option value="pending">처리 대기</option><option value="resolved">처리 완료</option><option value="rejected">반려</option></select>
+          <input id="reportSearch" type="search" placeholder="ID, 신고 사유, 신고자 검색">
+        </div>
+        <div id="reportsList" class="list"></div>
+      </section>
+
+      <section id="logsPanel" class="panel" hidden>
+        <div class="filters"><input id="logSearch" type="search" placeholder="작업, 대상, 계정 검색"></div>
+        <div id="logsList" class="list"></div>
+      </section>
+      <p id="dashboardMessage" class="message"></p>
+    </section>
+  </main>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

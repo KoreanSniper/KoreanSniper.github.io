@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08111a">
+  <title>PIXELFRONT — 게임 설정</title>
+  <link rel="icon" href="../BlockRail.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="./auth/global-auth.css">
+  <script defer src="../pwa-register.js" data-sw-src="../sw.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="../minigame/index.html"><span>B</span> BLOCKRAIL / <b>PIXELFRONT</b></a><div class="global-auth" data-global-auth></div></header>
+  <main class="game-shell menu-screen">
+    <div class="menu-map" aria-hidden="true"></div>
+    <section class="setup panel">
+      <p class="eyebrow">INDEPENDENT TERRITORY RTS</p>
+      <h1>PIXEL<br><em>FRONT</em></h1>
+      <p>작은 영토에서 출발해 국경을 넓히고 적국과 전선을 형성하는 실시간 영토 전략 게임입니다.</p>
+      <form id="gameForm">
+        <label>국가 이름 <input id="playerName" name="name" maxlength="14" value="플레이어"></label>
+        <div class="settings">
+          <label>지도 <select name="map"><option value="world">세계 지도</option><option value="pangaea">판게아</option></select></label>
+          <label>AI 국가 <select name="ai"><option>5</option><option selected>8</option><option>12</option><option>16</option><option>20</option><option>30</option><option>40</option><option>50</option></select></label>
+          <label>난이도 <select name="difficulty"><option value="easy">쉬움</option><option selected value="normal">보통</option><option value="hard">어려움</option></select></label>
+        </div>
+        <label class="seed-setting">지도 시드 <span>같은 시드는 같은 지형을 만듭니다.</span><div><input id="seedInput" name="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1" placeholder="비워두면 무작위"><button id="randomSeed" type="button">무작위</button></div></label>
+        <button type="submit">싱글플레이 시작 <span>→</span></button>
+      </form>
+      <a href="./guide.html">게임 설명 보기</a>
+      <a href="../minigame/index.html">아케이드로 돌아가기</a>
+    </section>
+  </main>
+  <script type="module" src="menu.js"></script>
+  <script type="module" src="./auth/global-auth.js"></script>
+</body>
+</html>

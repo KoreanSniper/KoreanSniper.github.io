@@ -1,5 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
+import { writeActivityLog } from "./activity-log.js";
 import {
   collection,
   addDoc,
@@ -17,7 +18,7 @@ export async function addComment(postId) {
   if (!text.trim()) return;
   if (!auth.currentUser) return alert("로그인 필요");
 
-  await addDoc(collection(db, "comments"), {
+  const comment = await addDoc(collection(db, "comments"), {
     postId,
     uid: auth.currentUser.uid,
     content: text,
@@ -25,6 +26,7 @@ export async function addComment(postId) {
     dislikes: 0,
     created: serverTimestamp()
   });
+  await writeActivityLog("comment_created", "comment", comment.id, { postId });
 
   document.getElementById("comment").value = "";
 }

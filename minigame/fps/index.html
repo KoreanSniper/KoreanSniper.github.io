@@ -1,0 +1,56 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#11181e"><meta name="description" content="REDACTED - 2051년 기업 비밀전쟁 전술 FPS"><title>REDACTED — Operation 01</title><link rel="icon" type="image/png" href="../../BlockRail.png"><link rel="stylesheet" href="css/fps.css?v=75"></head><body>
+<div id="viewport"></div><div class="vignette"></div><section class="health-hud"><small>HEALTH · ARMOR <b id="armor">0</b></small><strong id="health">100</strong><div><i id="healthBar"></i></div></section><div id="hitmarker" class="hitmarker"><i></i><i></i><i></i><i></i></div><div id="damageFlash" class="damage-flash"></div>
+<header><a href="../index.html"><b>R</b> REDACTED / OPERATOR PROTOCOL</a><span id="mapLocation">CASTER · SUBSEA SIGNAL ARRAY</span></header>
+<section class="round-hud"><div class="team aegis"><small>AEGIS</small><strong id="aegisScore">0</strong></div><div class="round-center"><small id="roundLabel">ROUND 01 · 대기</small><strong id="roundTimer">--:--</strong><em id="playerRole">DEFENSE</em></div><div class="team nova"><small>NOVA</small><strong id="novaScore">0</strong></div></section>
+<section id="teamRoster" class="team-roster"><div id="allyRoster" class="roster-side ally"></div><div id="enemyRoster" class="roster-side enemy"></div></section>
+<section class="ability-hud"><div data-ability="scan"><b>Q</b><span>진동 정찰</span><em id="scanCooldown">READY</em></div><div data-ability="smoke"><b>Z</b><span>연막 투사</span><em id="smokeCooldown">READY</em></div><div data-ability="stim"><b>X</b><span>전투 자극</span><em id="stimCooldown">READY</em></div></section>
+<section id="objectiveHud" class="objective-hud hidden"><small id="objectiveLabel">LINK CORE</small><strong id="objectivePrompt">목표 구역으로 이동하십시오</strong><div><i id="objectiveProgress"></i></div></section>
+<section id="intelHud" class="intel-hud hidden"><small>FIELD INTELLIGENCE <b id="intelCount">0 / 4</b></small><strong id="intelPrompt">F · 단서 확인</strong><p id="intelText"></p></section>
+<section class="tactical-map"><small>TEAM INTEL · CASTER</small><canvas id="tacticalMap" width="180" height="180"></canvas><footer><span>● 아군</span><span>◆ 소리</span><span>● 적 발견</span></footer></section>
+<section id="spectatorHud" class="spectator-hud hidden"><small>TACTICAL SPECTATOR</small><strong id="spectatorName">ALLY</strong><span>Q / E · 아군 전환</span></section>
+<div id="corePulse" class="core-pulse"><span>LINK CORE CRITICAL</span></div>
+<section id="storyHud" class="story-hud hidden"><small id="storyChapter">OPERATION RECORD</small><strong id="storyTitle"></strong><p id="storyText"></p></section>
+<section id="roundReport" class="round-report hidden"><small id="reportResult">ROUND COMPLETE</small><strong id="reportReason"></strong><div><span>K <b id="statKills">0</b></span><span>D <b id="statDeaths">0</b></span><span>LINK <b id="statLinks">0</b></span><span>CUT <b id="statCuts">0</b></span></div><p id="reportIncome"></p></section>
+<section id="scoreboard" class="scoreboard hidden"><header><small>TACTICAL ROSTER</small><strong>CASTER · ROUND STATUS</strong></header><div class="scoreboard-head"><span>요원</span><span>역할</span><span>K</span><span>D</span><span>상태</span></div><div id="scoreboardRows"></div></section>
+<section id="matchEnd" class="match-end hidden"><small>OPERATION CLOSED</small><h2 id="matchEndTitle">CONTRACT COMPLETE</h2><p id="matchEndSummary"></p><button id="returnLobby">작전 로비로 복귀</button></section>
+<section class="telemetry"><div><small>MOVE SPEED</small><strong id="speed">0%</strong></div><div><small>SPREAD</small><strong id="spread">0.00°</strong></div><div><small>STATE</small><strong id="state">STILL</strong></div></section>
+<div class="hud-credits"><small>MISSION BUDGET</small><strong id="credits">12,000</strong></div><section class="weapon-hud"><div><small id="weaponType">MELEE</small><strong id="weaponName">TACTICAL KNIFE</strong></div><p><b id="ammo">—</b><span>/</span><em id="reserve"></em></p></section>
+<div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><b></b></div><div id="scope" class="scope"><span></span><span></span><i></i></div><div id="notice" class="notice"></div>
+<section id="killFeed" class="kill-feed" aria-live="polite"></section>
+<section id="radioHud" class="radio-hud hidden" aria-live="polite"><small id="radioSource">TEAM RADIO</small><strong id="radioText"></strong></section>
+<aside class="controls"><span>WASD 이동</span><span>SHIFT 걷기</span><span>SPACE 점프</span><span>CTRL / C 앉기</span><span>우클릭 조준 / 초크</span><span>좌클릭 발사</span><span>휠 클릭 팀 핑</span><span>TAB 스코어보드</span><span>E 링크 코어</span><span>F 단서 조사</span><span>R 재장전</span><span>B 무기고</span><span>1 주무기</span><span>2 권총</span><span>3 칼</span></aside>
+<section id="start" class="start"><p>AEGIS SECURE CONTRACT · 2051</p><h1>RED<em>ACTED</em></h1><h2>CASTER 해저 신호 배열 · 작전 01</h2><div class="rule-grid"><article><b>DEF</b><span>아이기스</span><small>데이터 조각을 보호하라</small></article><article><b>ATK</b><span>노바</span><small>기록을 회수하거나 파괴하라</small></article><article><b>A / B</b><span>목표 서버</span><small>두 구역 중 침투 지점을 선택</small></article><article><b>LINK</b><span>링크 코어</span><small>정보 전송 장치를 설치하거나 분리</small></article></div><button id="deploy">작전 투입</button><small>공식 기록에 이 작전은 존재하지 않습니다.</small></section>
+<section id="pause" class="pause hidden">
+  <div class="pause-shell">
+    <header class="pause-head"><div><p>OPERATION SUSPENDED</p><h2>전술 화면</h2></div><button id="resume">작전 복귀</button></header>
+    <div class="settings-grid">
+      <section class="settings-card">
+        <p class="settings-label">GENERAL SETTINGS</p>
+        <h3>게임 설정</h3>
+        <label><span>마우스 감도 <b id="sensitivityValue">1.00</b></span><input id="sensitivity" type="range" min="0.4" max="2.5" step="0.05"></label>
+        <label><span>기본 시야각 <b id="fovValue">72</b></span><input id="baseFov" type="range" min="60" max="95" step="1"></label>
+        <label><span>신호음 음량 <b id="volumeValue">70%</b></span><input id="masterVolume" type="range" min="0" max="1" step="0.05"></label>
+        <label class="toggle-row"><span>실시간 그림자</span><input id="shadows" type="checkbox"></label>
+      </section>
+      <section class="settings-card crosshair-settings">
+        <p class="settings-label">CROSSHAIR</p>
+        <h3>조준점 설정</h3>
+        <div class="crosshair-preview"><div class="preview-crosshair"><i></i><i></i><i></i><i></i><b></b></div></div>
+        <div class="compact-settings">
+          <label><span>색상</span><input id="crosshairColor" type="color"></label>
+          <label><span>간격 <b id="gapValue">8</b></span><input id="crosshairGap" type="range" min="2" max="22" step="1"></label>
+          <label><span>길이 <b id="sizeValue">7</b></span><input id="crosshairSize" type="range" min="3" max="16" step="1"></label>
+          <label><span>두께 <b id="thicknessValue">2</b></span><input id="crosshairThickness" type="range" min="1" max="5" step="1"></label>
+          <label class="toggle-row"><span>중앙점 표시</span><input id="crosshairDot" type="checkbox"></label>
+        </div>
+      </section>
+    </div>
+    <footer class="pause-footer"><span>ESC를 누르면 이 화면이 열립니다.</span><button id="pauseLobby">FPS 로비로 복귀</button><a href="../index.html">아케이드로 나가기</a></footer>
+  </div>
+</section><section id="armory" class="armory hidden">
+  <div class="armory-shell">
+    <header class="armory-head"><div><p>FIELD REQUISITION</p><h2>작전 장비 보급</h2></div><div class="armory-balance"><small>MISSION BUDGET</small><strong id="armoryCredits">4,000</strong></div><button id="closeArmory">닫기</button></header>
+    <div class="armory-note"><span><b>1</b> 주무기</span><span><b>2</b> 권총</span><span><b>3</b> 칼</span><button id="buyArmor" class="armor-buy">복합 방탄판 40 · 1,000 C</button><button id="refundLoadout" class="armor-buy">이번 라운드 구매 취소</button><em>생존 장비는 다음 라운드까지 유지됩니다.</em></div>
+    <div id="armoryGrid" class="armory-grid"></div>
+  </div>
+</section><script type="module" src="js/fps.js?v=75"></script></body></html>

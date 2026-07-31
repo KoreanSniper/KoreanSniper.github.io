@@ -1,5 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
+import { writeActivityLog } from "./activity-log.js";
 import {
   addDoc,
   collection,
@@ -48,7 +49,7 @@ export async function reportPost(postId) {
     }
 
     // 🔥 Firestore 저장
-    await addDoc(collection(db, "reports"), {
+    const report = await addDoc(collection(db, "reports"), {
       postId,
       uid: user.uid,
       reason: reason.trim(),
@@ -56,6 +57,7 @@ export async function reportPost(postId) {
       status: "pending", // 처리 상태
       createdAt: serverTimestamp()
     });
+    await writeActivityLog("post_reported", "post", postId, { reportId: report.id });
 
     alert("신고가 접수되었습니다");
 
