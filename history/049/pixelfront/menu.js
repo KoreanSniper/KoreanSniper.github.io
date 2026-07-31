@@ -20,14 +20,22 @@ form.addEventListener("submit", event => {
   location.href = `./play.html?${params}`;
 });
 
-if (hasSavedGame()) {
-  const saved = readGame(), button = document.createElement("button");
+function renderContinueButton() {
+  const existing = form.querySelector("[data-continue-game]");
+  if (!hasSavedGame()) { existing?.remove(); return; }
+  const saved = readGame();
+  const button = existing || document.createElement("button");
   button.type = "button";
+  button.dataset.continueGame = "";
   button.innerHTML = `이어하기 <small>${new Date(saved.savedAt).toLocaleString("ko-KR")}</small><span>→</span>`;
   button.style.cssText = "margin-bottom:10px;background:#42a5ff;color:#061019";
   button.onclick = () => location.href = "./play.html?continue=1";
-  form.prepend(button);
+  if (!existing) form.prepend(button);
 }
+renderContinueButton();
+addEventListener("pageshow", renderContinueButton);
+addEventListener("focus", renderContinueButton);
+addEventListener("storage", event => { if (event.key === "pixelfront-save-v1") renderContinueButton(); });
 
 const online = document.createElement("section");
 online.className = "firebase-lobby";
