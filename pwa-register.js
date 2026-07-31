@@ -11,7 +11,7 @@
 
   if (!("serviceWorker" in navigator)) return;
   if (!window.isSecureContext || location.protocol === "file:") return;
-  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=5`;
+  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=6`;
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register(swSrc, { updateViaCache: "none" }).then((registration) => {
