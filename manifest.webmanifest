@@ -1,13 +1,13 @@
 {
-  "name": "BlockRail Arcade",
+  "name": "BlockRail",
   "short_name": "BlockRail",
-  "description": "BlockRail Arcade mobile installable app",
+  "description": "오리지널 웹게임과 철도 네트워크, 커뮤니티가 연결된 디지털 놀이터",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#1e1f22",
-  "theme_color": "#5865f2",
+  "orientation": "any",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
   "icons": [
     {
       "src": "./BlockRail.png",
