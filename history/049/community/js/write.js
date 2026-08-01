@@ -8,7 +8,8 @@ import {
 
 import {
   collection,
-  addDoc,
+  doc,
+  writeBatch,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -50,12 +51,17 @@ window.writePost = async () => {
   }
 
   try {
-    const post = await addDoc(collection(db, "posts"), {
+    const post = doc(collection(db, "posts"));
+    const rateRef = doc(db, "rateLimits", `${currentUser.uid}_post`);
+    const batch = writeBatch(db);
+    batch.set(post, {
       title,
       content,
       uid: currentUser.uid,
       createdAt: serverTimestamp()
     });
+    batch.set(rateRef, { uid: currentUser.uid, kind: "post", lastAt: serverTimestamp() });
+    await batch.commit();
     await writeActivityLog("post_created", "post", post.id);
 
     status.innerText = "✅ 작성 완료!";

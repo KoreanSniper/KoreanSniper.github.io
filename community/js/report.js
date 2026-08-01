@@ -4,7 +4,7 @@ import { writeActivityLog } from "./activity-log.js";
 import { isVerifiedGoogleUser } from "./util.js";
 import {
   doc,
-  setDoc,
+  writeBatch,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -37,7 +37,9 @@ export async function reportPost(postId) {
     if (reason.trim().length > 500) { alert("신고 사유는 500자까지 입력할 수 있습니다"); return; }
 
     // 🔥 Firestore 저장
-    await setDoc(reportRef, {
+    const rateRef=doc(db,"rateLimits",`${user.uid}_report`);
+    const batch=writeBatch(db);
+    batch.set(reportRef, {
       postId,
       uid: user.uid,
       reason: reason.trim(),
@@ -45,6 +47,8 @@ export async function reportPost(postId) {
       status: "pending", // 처리 상태
       createdAt: serverTimestamp()
     });
+    batch.set(rateRef, { uid:user.uid, kind:"report", lastAt:serverTimestamp() });
+    await batch.commit();
     await writeActivityLog("post_reported", "post", postId, { reportId: reportRef.id });
 
     alert("신고가 접수되었습니다");

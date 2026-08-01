@@ -7,11 +7,11 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-import { listenComments, addComment } from "./comment.js";
-import { reportComment } from "./reportcomment.js";
+import { listenComments, addComment } from "./comment.js?v=2";
+import { reportComment } from "./reportcomment.js?v=2";
 import { deleteComment } from "./deletecomment.js";
 
-import { reportPost } from "./report.js";
+import { reportPost } from "./report.js?v=2";
 import { deletePost } from "./delete.js";
 
 const postId = new URLSearchParams(location.search).get("id");

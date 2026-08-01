@@ -35,6 +35,18 @@ service cloud.firestore {
         && request.resource.data.get("emailVerified", true) == true;
     }
 
+    function rateLimitAllows(kind, seconds) {
+      let rateId = request.auth.uid + "_" + kind;
+      let ratePath = /databases/$(database)/documents/rateLimits/$(rateId);
+      return getAfter(ratePath).data.uid == request.auth.uid
+        && getAfter(ratePath).data.kind == kind
+        && getAfter(ratePath).data.lastAt == request.time
+        && (
+          !exists(ratePath)
+          || get(ratePath).data.lastAt < request.time - duration.value(seconds, 's')
+        );
+    }
+
     function roomIsParticipant() {
       return signedIn()
         && (
@@ -187,6 +199,7 @@ service cloud.firestore {
         && request.resource.data.content.size() >= 1
         && request.resource.data.content.size() <= 10000
         && request.resource.data.createdAt == request.time
+        && rateLimitAllows("post", 30)
         && request.resource.data.keys().hasOnly(["title", "content", "uid", "createdAt"]);
 
       allow update: if verifiedGoogleUser()
@@ -221,6 +234,7 @@ service cloud.firestore {
         && request.resource.data.likes == 0
         && request.resource.data.dislikes == 0
         && request.resource.data.created == request.time
+        && rateLimitAllows("comment", 5)
         && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
         && request.resource.data.keys().hasOnly(["postId", "content", "uid", "likes", "dislikes", "created"]);
 
@@ -264,6 +278,7 @@ service cloud.firestore {
         && request.resource.data.reason.size() >= 1
         && request.resource.data.reason.size() <= 500
         && request.resource.data.createdAt == request.time
+        && rateLimitAllows("report", 60)
         && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
         && request.resource.data.type == "post"
         && request.resource.data.status == "pending";
@@ -292,6 +307,7 @@ service cloud.firestore {
         && request.resource.data.reason.size() >= 1
         && request.resource.data.reason.size() <= 500
         && request.resource.data.createdAt == request.time
+        && rateLimitAllows("report", 60)
         && exists(/databases/$(database)/documents/comments/$(request.resource.data.commentId))
         && request.resource.data.type == "comment"
         && request.resource.data.status == "pending";
@@ -314,136 +330,69 @@ service cloud.firestore {
     }
 
     // =====================
+    // SERVER-ENFORCED WRITE RATE LIMITS
+    // =====================
+    match /rateLimits/{rateId} {
+      allow read: if false;
+      allow create: if verifiedGoogleUser()
+        && rateId == request.auth.uid + "_" + request.resource.data.kind
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ["post", "comment", "report"]
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.keys().hasOnly(["uid", "kind", "lastAt"]);
+      allow update: if verifiedGoogleUser()
+        && rateId == request.auth.uid + "_" + resource.data.kind
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["lastAt"])
+        && (
+          (resource.data.kind == "post" && resource.data.lastAt < request.time - duration.value(30, 's'))
+          || (resource.data.kind == "comment" && resource.data.lastAt < request.time - duration.value(5, 's'))
+          || (resource.data.kind == "report" && resource.data.lastAt < request.time - duration.value(60, 's'))
+        );
+      allow delete: if false;
+    }
+
+    // =====================
     // PIXELFRONT ROOMS
     // =====================
     match /pixelfrontRooms/{roomCode} {
-      allow get: if signedIn();
-      allow list: if false;
-      allow create, update, delete: if false;
+      allow read, write: if false;
     }
 
     // =====================
     // MINIGAME ROOMS
     // =====================
     match /minigameRooms/{roomId} {
-      allow read: if signedIn()
-        && (
-          resource.data.status == "waiting"
-          || resource.data.hostId == request.auth.uid
-          || resource.data.guestId == request.auth.uid
-        );
-
-      allow create: if signedIn()
-        && request.resource.data.status == "waiting"
-        && request.resource.data.hostId == request.auth.uid
-        && request.resource.data.hostName is string
-        && request.resource.data.state is map;
-
-      allow update: if signedIn()
-        && roomCommonFieldsValid()
-        && (
-          roomHostUpdateAllowed()
-          || roomGuestJoinAllowed()
-          || roomActiveParticipantUpdateAllowed()
-        );
-
-      allow delete: if roomDeleteAllowed();
+      allow read, write: if false;
     }
 
     // =====================
     // MINIGAME CHAT
     // =====================
     match /minigameRooms/{roomId}/chat/{messageId} {
-      allow read: if minigameRoomParticipant(roomId);
-
-      allow create: if minigameRoomParticipant(roomId)
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 180
-        && request.resource.data.keys().hasAll(["uid", "name", "text", "clientTs", "createdAt"]);
-
-      allow update, delete: if false;
+      allow read, write: if false;
     }
 
     // GOMOKU ROOMS
     // =====================
     match /gomokuRooms/{roomId} {
-      allow read: if signedIn()
-        && (
-          resource.data.status == "waiting"
-          || resource.data.hostId == request.auth.uid
-          || resource.data.guestId == request.auth.uid
-          || isAdmin()
-        );
-
-      allow create: if signedIn()
-        && request.resource.data.status == "waiting"
-        && request.resource.data.hostId == request.auth.uid
-        && request.resource.data.hostName is string
-        && request.resource.data.state is map;
-
-      allow update: if signedIn()
-        && roomCommonFieldsValid()
-        && (
-          roomHostUpdateAllowed()
-          || roomGuestJoinAllowed()
-          || roomActiveParticipantUpdateAllowed()
-        );
-
-      allow delete: if roomDeleteAllowed();
+      allow read, write: if false;
     }
 
     // =====================
     // GOMOKU MATCHMAKING
     // =====================
     match /gomokuMatchmaking/{docId} {
-      allow read: if signedIn()
-        && (request.auth.uid == resource.data.hostId || isAdmin());
-
-      allow create: if signedIn()
-        && request.auth.uid == request.resource.data.hostId
-        && request.resource.data.keys().hasOnly(["roomId", "hostId", "updatedAt"])
-        && request.resource.data.roomId is string;
-
-      allow update: if signedIn()
-        && request.auth.uid == resource.data.hostId
-        && request.resource.data.hostId == resource.data.hostId
-        && request.resource.data.roomId == resource.data.roomId
-        && request.resource.data.keys().hasOnly(["roomId", "hostId", "updatedAt"]);
-
-      allow delete: if signedIn()
-        && (request.auth.uid == resource.data.hostId || isAdmin());
+      allow read, write: if false;
     }
 
     // =====================
     // GOMOKU CHAT
     // =====================
     match /gomokuRooms/{roomId}/chat/{messageId} {
-      allow read: if signedIn()
-        && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status == "waiting"
-          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
-          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
-          || isAdmin()
-        );
-
-      allow create: if signedIn()
-        && (
-          get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.status == "waiting"
-          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.hostId == request.auth.uid
-          || get(/databases/$(database)/documents/gomokuRooms/$(roomId)).data.guestId == request.auth.uid
-          || isAdmin()
-        )
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 180
-        && request.resource.data.keys().hasAll(["uid", "name", "text", "clientTs", "createdAt"]);
-
-      allow update, delete: if false;
+      allow read, write: if false;
     }
 
     // =====================

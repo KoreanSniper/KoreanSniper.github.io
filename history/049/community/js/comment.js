@@ -4,7 +4,8 @@ import { writeActivityLog } from "./activity-log.js";
 import { isVerifiedGoogleUser } from "./util.js";
 import {
   collection,
-  addDoc,
+  doc,
+  writeBatch,
   query,
   where,
   orderBy,
@@ -20,7 +21,10 @@ export async function addComment(postId) {
   if (!isVerifiedGoogleUser(auth.currentUser)) return alert("Google 로그인이 필요합니다");
   if (text.length > 2000) return alert("댓글은 2,000자까지 작성할 수 있습니다");
 
-  const comment = await addDoc(collection(db, "comments"), {
+  const comment = doc(collection(db, "comments"));
+  const rateRef = doc(db, "rateLimits", `${auth.currentUser.uid}_comment`);
+  const batch = writeBatch(db);
+  batch.set(comment, {
     postId,
     uid: auth.currentUser.uid,
     content: text,
@@ -28,6 +32,8 @@ export async function addComment(postId) {
     dislikes: 0,
     created: serverTimestamp()
   });
+  batch.set(rateRef, { uid: auth.currentUser.uid, kind: "comment", lastAt: serverTimestamp() });
+  await batch.commit();
   await writeActivityLog("comment_created", "comment", comment.id, { postId });
 
   document.getElementById("comment").value = "";

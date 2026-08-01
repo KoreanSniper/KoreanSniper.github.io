@@ -30,9 +30,7 @@ async function syncVerifiedUser(user) {
       photoURL: user.photoURL || "",
       email: deleteField(),
       isAdmin: deleteField(),
-      emailVerified: true,
       lastLoginAt: new Date(),
-      provider: "google",
     },
     { merge: true },
   );
