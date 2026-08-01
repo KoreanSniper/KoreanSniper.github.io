@@ -2664,7 +2664,7 @@ function renderStatus() {
       : "",
     gameState.gameOver
       ? (gameState.winner ? `${gameState.winner}가 승리했습니다.` : gameState.drawReason || "무승부입니다.")
-      : "11x11 보드에서 정확히 5개를 잇으면 승리합니다.",
+      : "11x11 보드에서 정확히 5개를 잇고 상대의 다음 턴까지 유지하면 승리합니다.",
     gameState.pendingMovePush
       ? `무브칸: 상대 돌을 한 칸 밀 방향을 고르세요. (${coordLabel(gameState.pendingMovePush.index)})`
       : `공개된 특수칸: 무브칸 ${gameState.moveTiles?.length || 0}개, 자폭칸 ${gameState.bombTiles?.length || 0}개`,
