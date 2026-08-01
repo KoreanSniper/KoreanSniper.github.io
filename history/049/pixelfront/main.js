@@ -2,7 +2,7 @@ import{RULES}from"./config.js";
 import{Engine}from"./engine.js";
 import{makeMap}from"./map.js";
 import"./victory.js";
-import{Bots}from"./ai.js";
+import{Bots}from"./ai.js?v=2";
 import{Renderer,short}from"./renderer.js";
 import"./visibility.js";
 import{installDiplomacy}from"./diplomacy.js?v=4";
@@ -30,7 +30,7 @@ const selectedSeed=savedData?.seed??urlSeed??crypto.getRandomValues(new Uint32Ar
 function loadingProgress(stage,percent){const current=loadingStages.indexOf(stage);$("#loadingFill").style.width=`${percent}%`;$("#loadingPercent").textContent=`${percent}%`;document.querySelectorAll("#mapLoading [data-stage]").forEach((item,index)=>{const done=index<current||percent>=100,active=index===current&&percent<100;item.classList.toggle("done",done);item.classList.toggle("active",active);item.querySelector("b").textContent=done?"✅":active?"⌛":"▢"})}
 async function generateMap(seed,mapType){loadingProgress("terrain",2);if(typeof Worker==="undefined"){await new Promise(requestAnimationFrame);const map=makeMap(seed,mapType,loadingProgress);loadingProgress("finalize",100);return map}return new Promise((resolve,reject)=>{const worker=new Worker(new URL("./map-worker.js",import.meta.url),{type:"module"});worker.onmessage=event=>{const message=event.data;if(message.type==="progress")loadingProgress(message.stage,message.percent);else if(message.type==="complete"){loadingProgress("finalize",100);setTimeout(()=>{worker.terminate();resolve(message.map)},180)}else if(message.type==="error"){worker.terminate();reject(new Error(message.message))}};worker.onerror=error=>{worker.terminate();reject(error)};worker.postMessage({seed,mapType})})}
 const generatedMap=await generateMap(selectedSeed,opts.mapType);
-let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(canvas,e),b=new Bots(e,opts.difficulty),timer,percent=25,drag=false,moved=false,last={x:0,y:0},defeatPendingAt=0;
+let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(canvas,e),b=new Bots(e,opts.difficulty),timer,percent=25,drag=false,moved=false,last={x:0,y:0},defeatPendingAt=0,lastRankingTick=-Infinity;
 function focusPlayerSpawn(){const spawn=e.nations[0]?.spawn;if(spawn<0)return;const[x,y]=e.xy(spawn);r.camera.z=Math.max(r.camera.z,2.2);const scale=Math.min(r.w/e.map.width,r.h/e.map.height)*r.camera.z;r.camera.x=(e.map.width/2-x-.5)*scale;r.camera.y=(e.map.height/2-y-.5)*scale}
 const gameServer=new PixelFrontServer();
 let authorityAvailable=false;
@@ -126,7 +126,7 @@ function ui(force=false){
   $("#rank").textContent=me.alive?(rank.findIndex(n=>n.id===0)+1)+" / "+e.nations.filter(n=>n.alive).length:"제거됨";
   $("#time").textContent=String(sec/60|0).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
   $("#alive").textContent=e.nations.filter(n=>n.alive).length+" ALIVE";
-  $("#ranking").innerHTML=rank.slice(0,12).map((n,i)=>`<li class="${n.id===0?'me':''}"><span>${i+1}</span><span><i style="background:${n.color};display:inline-block;margin-right:7px"></i>${n.name}</span><small>${n.alive?n.tiles.size:'제거됨'}</small></li>`).join("");
+  if(force||e.tick-lastRankingTick>=12){lastRankingTick=e.tick;$("#ranking").innerHTML=rank.map((n,i)=>`<li class="${n.id===0?'me':''}"><span>${i+1}</span><span><i style="background:${n.color};display:inline-block;margin-right:7px"></i>${n.name}</span><small>${n.alive?n.tiles.size:'제거됨'}</small></li>`).join("")}
 }
 function toast(text){const el=$("#toast");el.textContent=text;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1600)}
 function finish(defeated=false){clearInterval(timer);ui(true);r.draw();const won=!defeated&&e.winner===0,result=$("#result"),replay=$("#replay"),menuLink=result.querySelector("a");$("#resultTitle").textContent=won?"승리":"패배";$("#resultText").textContent=won?"지도의 95%를 점령했습니다.":"모든 영토를 잃어 국가가 제거되었습니다.";let button=$("#continueGame");if(!button){button=document.createElement("button");button.id="continueGame";button.style.background="#42a5ff";result.insertBefore(button,replay)}e.renderAfterAction?.(result);button.textContent=defeated?"관전하기":"계속하기";button.onclick=()=>{e.continueAfterVictory=true;e.spectating=defeated;e.winner=null;e.running=true;result.classList.add("hidden");timer=setInterval(runFrame,RULES.tickMs)};if(defeated){replay.textContent="메뉴로";replay.onclick=()=>location.href="./menu.html";menuLink.style.display="none"}else{replay.textContent="같은 설정으로 다시";replay.onclick=()=>location.reload();menuLink.style.display="block"}result.classList.remove("hidden")}
