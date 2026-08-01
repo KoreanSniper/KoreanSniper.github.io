@@ -122,7 +122,7 @@ function ui(){
   const me=e.nations[0],rank=[...e.nations].sort((a,z)=>z.tiles.size-a.tiles.size),sec=e.tick*RULES.tickMs/1000|0;
   $("#troops").textContent=short(me.troops)+" / "+short(RULES.popBase+me.tiles.size*RULES.popPerTile);
   $("#territory").textContent=me.tiles.size.toLocaleString();
-  $("#rank").textContent=(rank.findIndex(n=>n.id===0)+1)+" / "+e.nations.filter(n=>n.alive).length;
+  $("#rank").textContent=me.alive?(rank.findIndex(n=>n.id===0)+1)+" / "+e.nations.filter(n=>n.alive).length:"제거됨";
   $("#time").textContent=String(sec/60|0).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
   $("#alive").textContent=e.nations.filter(n=>n.alive).length+" ALIVE";
   $("#ranking").innerHTML=rank.slice(0,12).map((n,i)=>`<li class="${n.id===0?'me':''}"><span>${i+1}</span><span><i style="background:${n.color};display:inline-block;margin-right:7px"></i>${n.name}</span><small>${n.alive?n.tiles.size:'제거됨'}</small></li>`).join("");
