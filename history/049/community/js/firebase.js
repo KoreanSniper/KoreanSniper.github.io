@@ -8,8 +8,9 @@ const firebaseConfig = {   apiKey: "AIzaSyDByzSlI85c2_uvbyZ_Y_bHmPbcGcq7kJ0",   
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-// WebChannel 스트리밍이 일부 환경에서 400을 내는 경우가 있어서 장기 폴링을 자동으로 선택한다.
+// GitHub Pages 환경에서 WebChannel이 간헐적으로 400을 반환하므로 장기 폴링을 강제한다.
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
+  useFetchStreams: false,
 });
 

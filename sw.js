@@ -1,6 +1,6 @@
 console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
-const CACHE_NAME="blockrail-pwa-v158";
-const APP_SHELL=["./","./index.html","./site-shell.css","./styles.css","./manifest.webmanifest","./BlockRail.png","./mobile-menu.js?v=3","./community/css/global-auth.css","./community/js/global-auth.js","./community/js/firebase.js","./community/js/activity-log.js"];
+const CACHE_NAME="blockrail-pwa-v159";
+const APP_SHELL=["./","./index.html","./site-shell.css","./styles.css","./manifest.webmanifest","./BlockRail.png","./favicon.ico","./mobile-menu.js?v=3","./community/css/global-auth.css","./community/js/global-auth.js","./community/js/firebase.js","./community/js/activity-log.js"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)));self.skipWaiting()});
 self.addEventListener("activate",event=>{event.waitUntil((async()=>{await Promise.all((await caches.keys()).filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)));await self.clients.claim();const clients=await self.clients.matchAll({type:"window"});await Promise.all(clients.map(client=>client.navigate(client.url).catch(()=>null)))})())});
 async function networkFirst(request){const cache=await caches.open(CACHE_NAME);try{const response=await fetch(request);if(response?.ok)cache.put(request,response.clone());return response}catch{return await cache.match(request)||await cache.match("./index.html")||new Response("",{status:504,statusText:"Offline"})}}
