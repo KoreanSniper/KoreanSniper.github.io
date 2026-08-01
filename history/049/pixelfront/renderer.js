@@ -14,6 +14,7 @@ export class Renderer {
   tile(x,y){const p=this.point(0,0),tx=Math.floor((x-p.x)/p.s),ty=Math.floor((y-p.y)/p.s);return tx>=0&&ty>=0&&tx<this.e.map.width&&ty<this.e.map.height?ty*this.e.map.width+tx:-1}
   vision(){
     const e=this.e,o=e.owner,w=e.map.width,h=e.map.height;
+    if(e.spectating){this.visible.fill(2);this.explored.fill(1);this.haloTiles=[];this.allyTiles=[];this.visibleTiles=[];this.fullVisibility=true;this.visionTick=e.tick;return}
     if(e.nations[0].spawn<0){this.visible.fill(1);this.fullVisibility=true;this.visionTick=e.tick;return}
     const changed=new Set(this.haloTiles);for(const i of this.allyTiles)changed.add(i);
     if(this.fullVisibility||!this.visionInitialized){this.visible.fill(0);for(const i of e.nations[0].tiles){this.visible[i]=2;this.explored[i]=1}this.visionInitialized=true}
