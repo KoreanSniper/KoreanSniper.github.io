@@ -38,10 +38,10 @@ export function installNaval(){
     mission={id:`naval-${this.tick}-${this.navalMissions.length}`,attacker,defender,start:startInfo.tile,target,clicked,troops:amount,troopQueue:[amount],state:"sailing",started:this.tick,travelTicks,progress:0};
     this.navalMissions.push(mission);return{ok:true,message:`상륙함 출항 · ${short(amount)}명`}
   };
-  Engine.prototype.step=function(){oldStep.call(this);this.ensureNaval();for(const m of this.navalMissions){if(m.state!=="sailing")continue;m.progress=Math.min(1,(this.tick-m.started)/m.travelTicks);if(m.progress>=1)m.state="ready"}};
+  Engine.prototype.step=function(){oldStep.call(this);this.ensureNaval();const arrived=[];for(const m of this.navalMissions){if(m.state!=="sailing")continue;m.progress=Math.min(1,(this.tick-m.started)/m.travelTicks);if(m.progress>=1){m.state="ready";arrived.push(m)}}for(const m of arrived)this.begin({type:"attack",playerId:m.attacker,target:m.target,targetOwner:m.defender,percent:0,navalArrival:true})};
   Engine.prototype.begin=function(c){
     if(c.type==="attack"){this.ensureNaval();const target=c.targetOwner,mission=this.navalMissions.find(m=>m.attacker===c.playerId&&m.defender===target&&m.state==="ready");if(mission){
-      const nation=this.nations[c.playerId],extra=Math.floor(nation.troops*Math.max(.05,Math.min(.9,c.percent/100)));if(extra>=30)nation.troops-=extra;
+      const nation=this.nations[c.playerId],extra=c.navalArrival?0:Math.floor(nation.troops*Math.max(.05,Math.min(.9,c.percent/100)));if(extra>=30)nation.troops-=extra;
       const power=mission.troops+(extra>=30?extra:0),fallbackTiles=target>=0?[...(this.nations[target].borderTiles||this.nations[target].tiles)].filter(t=>coastal(this,t)):Array.from(this.owner,(owner,tile)=>owner===-1&&coastal(this,tile)?tile:-1).filter(tile=>tile>=0),landing=mission.isCrossing?mission.target:(this.owner[mission.target]===target?mission.target:closest(this,fallbackTiles,mission.target).tile);
       if(landing<0)return;const defender=target>=0?this.nations[target]:null,cost=defender?Math.max(12,Math.ceil(defender.troops/Math.max(1,defender.tiles.size))):RULES.neutralCost;
       if(power<=cost)return;if(defender)defender.troops=Math.max(0,defender.troops-cost);this.transfer(landing,c.playerId);
