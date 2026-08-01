@@ -34,7 +34,7 @@ let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(ca
 function focusPlayerSpawn(){const spawn=e.nations[0]?.spawn;if(spawn<0)return;const[x,y]=e.xy(spawn);r.camera.z=Math.max(r.camera.z,2.2);const scale=Math.min(r.w/e.map.width,r.h/e.map.height)*r.camera.z;r.camera.x=(e.map.width/2-x-.5)*scale;r.camera.y=(e.map.height/2-y-.5)*scale}
 const gameServer=new PixelFrontServer();
 let authorityAvailable=false;
-const gameServerReady=(onlineSession?gameServer.join(onlineSession):gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty})).then(session=>{authorityAvailable=!!session;return session}).catch(error=>{if(onlineSession)toast(error.message||"온라인 서버 연결에 실패했습니다.");else console.info("PIXELFRONT authority unavailable; using local engine",error);return null});
+const gameServerReady=(savedData&&!onlineSession?Promise.resolve(null):onlineSession?gameServer.join(onlineSession):gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty})).then(session=>{authorityAvailable=!!session;return session}).catch(error=>{if(onlineSession)toast(error.message||"온라인 서버 연결에 실패했습니다.");else console.info("PIXELFRONT authority unavailable; using local engine",error);return null});
 const issueLocal=e.issue.bind(e);
 let authoritySync=null,syncBusy=false;
 function applyAuthority(state,applyOwner=true){
