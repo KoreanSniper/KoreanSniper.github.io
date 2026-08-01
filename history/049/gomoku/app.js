@@ -2143,6 +2143,16 @@ function startLocalAIMatch(message = "AI 대전 준비 완료") {
 async function startOnlineMatch() {
   stopOnlineSession();
   stopAiTimer();
+  session.mode = "local";
+  session.notice = "온라인 경기는 보안 점검으로 잠시 중단되었습니다. AI 대전을 이용해 주세요.";
+  gameState = createInitialState();
+  renderAll();
+  scheduleAiTurn();
+  return;
+
+  /* 온라인 권한 서버 재개 후 아래 매칭 흐름을 복구합니다.
+  stopOnlineSession();
+  stopAiTimer();
   session.mode = "online";
   session.notice = "자동 온라인 매칭으로 상대를 찾는 중입니다.";
   gameState = createInitialState();
@@ -2211,6 +2221,7 @@ async function startOnlineMatch() {
     if (pendingRoomRef) await deleteOnlineRoom(pendingRoomRef);
     startLocalAIMatch("온라인 매칭 중 문제가 생겼습니다.");
   }
+  */
 }
 
 async function watchGomokuRoom(roomId) {

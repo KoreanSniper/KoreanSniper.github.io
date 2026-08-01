@@ -37,7 +37,7 @@
         <p id="lobbyStatus" class="panel-hint">현재 진행 중인 오목 경기를 보고, 바로 관전할 수 있습니다.</p>
         <div class="panel-actions">
           <button type="button" onclick="startLocalAIMatch()">AI 경기</button>
-          <button type="button" onclick="startOnlineMatch()">온라인 경기</button>
+          <button type="button" onclick="startOnlineMatch()" disabled title="보안 점검 중">온라인 경기 · 점검 중</button>
           <button type="button" onclick="cancelOnlineMatch()">매칭 취소</button>
         </div>
         <div id="lobbyList" class="lobby-list" aria-live="polite"></div>
@@ -56,7 +56,7 @@
         </div>
         <div class="mode-actions">
           <button type="button" onclick="startLocalAIMatch()">AI 대전</button>
-          <button type="button" onclick="startOnlineMatch()">온라인 매칭</button>
+          <button type="button" onclick="startOnlineMatch()" disabled title="보안 점검 중">온라인 매칭 · 점검 중</button>
           <button type="button" onclick="restartCurrentGame()">다시 시작</button>
           <button type="button" onclick="cancelOnlineMatch()">매칭 취소</button>
         </div>
@@ -127,6 +127,6 @@
     </main>
   </div>
 
-  <script type="module" src="./app.js?v=4"></script>
+  <script type="module" src="./app.js?v=5"></script>
 <script type="module" src="../community/js/global-auth.js"></script></body>
 </html>
