@@ -43,12 +43,12 @@ function applyAuthority(state,applyOwner=true){
     for(let i=0;i<owner.length;i++)if(owner[i]!==-3&&e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
     r.visionTick=-1
   }
-  for(const saved of state.nations){const nation=e.nations[gameServer.toLocalNation(saved.id)];if(!nation)continue;if(saved.troops!=null&&(applyOwner||nation.id===0))nation.troops=saved.troops;if(saved.spawn!=null)nation.spawn=saved.spawn;if(saved.alive!=null)nation.alive=saved.alive;nation.name=saved.name}
+  for(const saved of state.nations){const nation=e.nations[gameServer.toLocalNation(saved.id)];if(!nation)continue;if(saved.troops!=null&&(applyOwner||nation.id===0))nation.troops=saved.troops;if(saved.spawn!=null)nation.spawn=saved.spawn;if(applyOwner&&saved.alive!=null)nation.alive=saved.alive;nation.name=saved.name}
   if(state.buildings&&e.buildings){e.buildings.fill(0);for(const nation of e.nations)nation.buildingTiles?.clear();for(const[tile,type]of state.buildings){const owner=e.owner[tile];if(owner>=0){e.buildings[tile]=type;e.nations[owner].buildingTiles?.add(tile)}}}
   if(state.relations)e.relations=Array.from({length:e.nations.length},(_,a)=>Array.from({length:e.nations.length},(_,b)=>state.relations[gameServer.toServerNation(a)]?.[gameServer.toServerNation(b)]??0));
   if(state.navalMissions)e.navalMissions=state.navalMissions.map(m=>({...m,attacker:gameServer.toLocalNation(m.attacker),defender:gameServer.toLocalNation(m.defender)}));
   if(applyOwner&&state.attacks){const localPlayerAttacks=e.attacks.filter(a=>a.attacker===0),synced=state.attacks.map(a=>({...a,attacker:gameServer.toLocalNation(a.attacker),defender:gameServer.toLocalNation(a.defender),front:new Set(a.front||[]),reinforcementQueue:a.reinforcementQueue||[]}));for(const local of localPlayerAttacks){const duplicate=synced.findIndex(a=>a.attacker===0&&a.defender===local.defender);if(duplicate>=0)synced.splice(duplicate,1);synced.push(local)}e.attacks=synced}
-  e.tick=Math.max(e.tick,state.tick||0);e.running=state.running!==false;e.winner=state.winner??null
+  e.tick=Math.max(e.tick,state.tick||0);if(applyOwner){e.running=state.running!==false;e.winner=state.winner??null}
 }
 let authorityFailures=0;
 const pendingCommands=new Set();
