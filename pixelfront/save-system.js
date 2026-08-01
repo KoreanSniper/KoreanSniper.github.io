@@ -24,6 +24,7 @@ export function exportGameFile(engine,opts={}){const payload={format:FILE_FORMAT
 export async function importGameFile(file){if(!file||!file.name.toLowerCase().endsWith(".pxfo"))throw new Error(".pxfo 파일만 불러올 수 있습니다");if(file.size>MAX_FILE_BYTES)throw new Error("저장 파일이 너무 큽니다");let payload;try{payload=JSON.parse(await file.text())}catch{throw new Error("손상된 저장 파일입니다")}const data=payload?.format===FILE_FORMAT&&payload.fileVersion===1?payload.game:null;if(!data||data.version!==1||!Number.isInteger(data.seed)||!data.owner||!Array.isArray(data.nations)||!Array.isArray(data.attacks))throw new Error("지원하지 않는 PIXELFRONT 저장 파일입니다");localStorage.setItem(KEY,JSON.stringify(data));return data}
 export function restoreGame(engine,data){
   if(!data||data.seed!==engine.map.seed||data.mapType!==engine.map.type||!decodeOwner(data.owner,engine.owner))return false;
+  if(!engine.owner.some(owner=>owner>=0))return false;
   for(const nation of engine.nations){nation.tiles.clear();nation.borderTiles=new Set}
   for(let i=0;i<engine.owner.length;i++){const id=engine.owner[i];if(id>=0&&engine.nations[id])engine.nations[id].tiles.add(i)}
   for(const saved of data.nations){const nation=engine.nations[saved.id];if(nation){Object.assign(nation,saved,{tiles:nation.tiles,borderTiles:nation.borderTiles,ai:nation.id>0});engine.applyDoctrine?.(nation)}}

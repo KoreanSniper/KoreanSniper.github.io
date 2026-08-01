@@ -18,7 +18,7 @@ import{installMobileControls}from"./mobile-controls.js";
 import{installAchievements,updateAchievementUI}from"./achievements.js";
 import{installCommanders,updateCommanderUI}from"./commanders.js";
 import{installEspionage,updateEspionageUI}from"./espionage.js";
-import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js";
+import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js?v=2";
 import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js?v=3";
 import{auth}from"./auth/firebase.js";
 
