@@ -112,9 +112,9 @@ async function deploy(i){
 }
 if(onlineSession)gameServerReady.then(result=>{if(!result?.state)return;applyAuthority(result.state);e.running=true;startAuthoritySync();focusPlayerSpawn();r.visionTick=-1;r.visible.fill(0);r.draw();$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(runFrame,RULES.tickMs)}).catch(error=>toast(error.message));
 
-function ui(){
+function ui(force=false){
   queueUI.update();
-  if(e.tick&&e.tick%4)return;
+  if(!force&&e.tick&&e.tick%4)return;
   updateCityUI(e);
   updateCombatFeedUI(e);
   updateAchievementUI(e);
@@ -129,7 +129,7 @@ function ui(){
   $("#ranking").innerHTML=rank.slice(0,12).map((n,i)=>`<li class="${n.id===0?'me':''}"><span>${i+1}</span><span><i style="background:${n.color};display:inline-block;margin-right:7px"></i>${n.name}</span><small>${n.alive?n.tiles.size:'제거됨'}</small></li>`).join("");
 }
 function toast(text){const el=$("#toast");el.textContent=text;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1600)}
-function finish(defeated=false){clearInterval(timer);const won=!defeated&&e.winner===0,result=$("#result"),replay=$("#replay"),menuLink=result.querySelector("a");$("#resultTitle").textContent=won?"승리":"패배";$("#resultText").textContent=won?"지도의 95%를 점령했습니다.":"모든 영토를 잃어 국가가 제거되었습니다.";let button=$("#continueGame");if(!button){button=document.createElement("button");button.id="continueGame";button.style.background="#42a5ff";result.insertBefore(button,replay)}e.renderAfterAction?.(result);button.textContent=defeated?"관전하기":"계속하기";button.onclick=()=>{e.continueAfterVictory=true;e.spectating=defeated;e.winner=null;e.running=true;result.classList.add("hidden");timer=setInterval(runFrame,RULES.tickMs)};if(defeated){replay.textContent="메뉴로";replay.onclick=()=>location.href="./menu.html";menuLink.style.display="none"}else{replay.textContent="같은 설정으로 다시";replay.onclick=()=>location.reload();menuLink.style.display="block"}result.classList.remove("hidden")}
+function finish(defeated=false){clearInterval(timer);ui(true);r.draw();const won=!defeated&&e.winner===0,result=$("#result"),replay=$("#replay"),menuLink=result.querySelector("a");$("#resultTitle").textContent=won?"승리":"패배";$("#resultText").textContent=won?"지도의 95%를 점령했습니다.":"모든 영토를 잃어 국가가 제거되었습니다.";let button=$("#continueGame");if(!button){button=document.createElement("button");button.id="continueGame";button.style.background="#42a5ff";result.insertBefore(button,replay)}e.renderAfterAction?.(result);button.textContent=defeated?"관전하기":"계속하기";button.onclick=()=>{e.continueAfterVictory=true;e.spectating=defeated;e.winner=null;e.running=true;result.classList.add("hidden");timer=setInterval(runFrame,RULES.tickMs)};if(defeated){replay.textContent="메뉴로";replay.onclick=()=>location.href="./menu.html";menuLink.style.display="none"}else{replay.textContent="같은 설정으로 다시";replay.onclick=()=>location.reload();menuLink.style.display="block"}result.classList.remove("hidden")}
 $("#randomSpawn").onclick=()=>{for(let n=0;n<5000;n++){const i=e.random()*e.owner.length|0;if(e.validSpawn(i)){deploy(i);break}}};
 $("#replay").onclick=()=>location.reload();
 $("#attackPercent").oninput=x=>setPercent(+x.target.value);
