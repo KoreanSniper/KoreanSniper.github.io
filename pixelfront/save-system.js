@@ -26,7 +26,7 @@ export function restoreGame(engine,data){
   if(!data||data.seed!==engine.map.seed||data.mapType!==engine.map.type||!decodeOwner(data.owner,engine.owner))return false;
   for(const nation of engine.nations){nation.tiles.clear();nation.borderTiles=new Set}
   for(let i=0;i<engine.owner.length;i++){const id=engine.owner[i];if(id>=0&&engine.nations[id])engine.nations[id].tiles.add(i)}
-  for(const saved of data.nations){const nation=engine.nations[saved.id];if(nation){Object.assign(nation,saved,{tiles:nation.tiles,borderTiles:nation.borderTiles});engine.applyDoctrine?.(nation)}}
+  for(const saved of data.nations){const nation=engine.nations[saved.id];if(nation){Object.assign(nation,saved,{tiles:nation.tiles,borderTiles:nation.borderTiles,ai:nation.id>0});engine.applyDoctrine?.(nation)}}
   if(engine.buildings){engine.buildings.fill(0);for(const nation of engine.nations)nation.buildingTiles=new Set;for(const[tile,type]of(data.buildings||[]))if(type&&engine.owner[tile]>=0){engine.buildings[tile]=type;engine.nations[engine.owner[tile]]?.buildingTiles.add(tile)}}
   for(const nation of engine.nations)for(const i of nation.tiles){let edge=false;engine.eachNeighbor(i,n=>{if(engine.owner[n]!==nation.id&&engine.owner[n]!==-2)edge=true});if(edge)nation.borderTiles.add(i)}
   engine.tick=data.tick||0;engine.running=data.running!==false;engine.winner=data.winner??null;
