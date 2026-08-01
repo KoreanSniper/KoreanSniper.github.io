@@ -179,19 +179,10 @@ onAuthStateChanged(auth, handleAuthStateChanged);
   return firebaseLoadPromise;
 }
 
-const GOMOKU_AUTHORITY_URL = "https://pixelfront-authority.seoul2linejh.workers.dev";
-
 async function gomokuAuthorityCall(path, init = {}) {
-  if (!(await ensureFirebase())) throw new Error("FIREBASE_UNAVAILABLE");
-  const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("LOGIN_REQUIRED");
-  const response = await fetch(`${GOMOKU_AUTHORITY_URL}${path}`, {
-    ...init,
-    headers: { "content-type":"application/json", authorization:`Bearer ${token}`, ...(init.headers || {}) },
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `AUTHORITY_ERROR_${response.status}`);
-  return data;
+  void path;
+  void init;
+  throw new Error("MAINTENANCE");
 }
 const gomokuAuthorityCreate = () => gomokuAuthorityCall("/gomoku", { method:"POST", body:"{}" });
 const gomokuAuthorityJoin = roomId => gomokuAuthorityCall(`/gomoku/${encodeURIComponent(roomId)}/join`, { method:"POST", body:"{}" });

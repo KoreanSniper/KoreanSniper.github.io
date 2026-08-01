@@ -19,7 +19,7 @@ import{installAchievements,updateAchievementUI}from"./achievements.js";
 import{installCommanders,updateCommanderUI}from"./commanders.js";
 import{installEspionage,updateEspionageUI}from"./espionage.js";
 import{readGame,saveGame,restoreGame,exportGameFile,importGameFile}from"./save-system.js?v=4";
-import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js?v=3";
+import{PixelFrontServer,decodeOwnerSnapshot}from"./sites-game-server.js?v=4";
 import{auth}from"./auth/firebase.js";
 
 const $=s=>document.querySelector(s),canvas=$("#game"),params=new URLSearchParams(location.search),onlineSession=params.get("session");

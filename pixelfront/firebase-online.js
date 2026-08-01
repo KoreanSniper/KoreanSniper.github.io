@@ -1,7 +1,7 @@
 import { auth, db } from "./auth/firebase.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, getDoc, setDoc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { PixelFrontServer } from "./sites-game-server.js";
+import { PixelFrontServer } from "./sites-game-server.js?v=4";
 
 const ROOMS = "pixelfrontRooms";
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

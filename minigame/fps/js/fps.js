@@ -1,6 +1,6 @@
 import * as THREE from "https://esm.sh/three@0.170.0";
 import { GLTFLoader } from "https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js";
-import { FpsAuthority } from "./fps-authority.js?v=1";
+import { FpsAuthority } from "./fps-authority.js?v=2";
 const $=s=>document.querySelector(s),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
 const authority=new FpsAuthority();
 let audioContext=null;function ensureAudio(){audioContext??=new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==="suspended")audioContext.resume();return audioContext}

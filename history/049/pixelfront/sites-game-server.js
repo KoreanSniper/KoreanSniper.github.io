@@ -1,23 +1,10 @@
-import { auth } from "./auth/firebase.js";
-
-const API_BASE = "https://pixelfront-authority.seoul2linejh.workers.dev";
-
 async function call(path, init = {}) {
-  await auth.authStateReady?.();
-  const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("게임 서버를 사용하려면 먼저 로그인해야 합니다.");
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(init.headers || {}) },
-  });
-  const text = await response.text();let data;try{data=text?JSON.parse(text):{}}catch{const error=new Error(`게임 서버가 잘못된 응답을 보냈습니다. (${response.status})`);error.status=response.status;error.code="INVALID_SERVER_RESPONSE";throw error}
-  if (!response.ok) {
-    const error = new Error(data.error || `게임 서버 오류 (${response.status})`);
-    error.status = response.status;
-    error.code = data.error || "SERVER_ERROR";
-    throw error;
-  }
-  return data;
+  void path;
+  void init;
+  const error = new Error("온라인 서버는 보안 점검 중입니다.");
+  error.status = 503;
+  error.code = "MAINTENANCE";
+  throw error;
 }
 
 export function decodeOwnerSnapshot(encoded, length) {

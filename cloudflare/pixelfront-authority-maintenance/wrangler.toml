@@ -1,0 +1,28 @@
+name = "pixelfront-authority"
+main = "worker.js"
+compatibility_date = "2026-07-27"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "GAME_ROOMS"
+class_name = "GameRoom"
+
+[[durable_objects.bindings]]
+name = "GOMOKU_ROOMS"
+class_name = "GomokuRoom"
+
+[[durable_objects.bindings]]
+name = "FPS_ROOMS"
+class_name = "FpsRoom"
+
+[exports.GameRoom]
+type = "durable-object"
+storage = "sqlite"
+
+[exports.GomokuRoom]
+type = "durable-object"
+storage = "sqlite"
+
+[exports.FpsRoom]
+type = "durable-object"
+storage = "sqlite"
