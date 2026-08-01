@@ -31,6 +31,7 @@ function loadingProgress(stage,percent){const current=loadingStages.indexOf(stag
 async function generateMap(seed,mapType){loadingProgress("terrain",2);if(typeof Worker==="undefined"){await new Promise(requestAnimationFrame);const map=makeMap(seed,mapType,loadingProgress);loadingProgress("finalize",100);return map}return new Promise((resolve,reject)=>{const worker=new Worker(new URL("./map-worker.js",import.meta.url),{type:"module"});worker.onmessage=event=>{const message=event.data;if(message.type==="progress")loadingProgress(message.stage,message.percent);else if(message.type==="complete"){loadingProgress("finalize",100);setTimeout(()=>{worker.terminate();resolve(message.map)},180)}else if(message.type==="error"){worker.terminate();reject(new Error(message.message))}};worker.onerror=error=>{worker.terminate();reject(error)};worker.postMessage({seed,mapType})})}
 const generatedMap=await generateMap(selectedSeed,opts.mapType);
 let e=new Engine({map:generatedMap,seed:selectedSeed,...opts}),r=new Renderer(canvas,e),b=new Bots(e,opts.difficulty),timer,percent=25,drag=false,moved=false,last={x:0,y:0};
+function focusPlayerSpawn(){const spawn=e.nations[0]?.spawn;if(spawn<0)return;const[x,y]=e.xy(spawn);r.camera.z=Math.max(r.camera.z,2.2);const scale=Math.min(r.w/e.map.width,r.h/e.map.height)*r.camera.z;r.camera.x=(e.map.width/2-x-.5)*scale;r.camera.y=(e.map.height/2-y-.5)*scale}
 const gameServer=new PixelFrontServer();
 let authorityAvailable=false;
 const gameServerReady=(onlineSession?gameServer.join(onlineSession):gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty})).then(session=>{authorityAvailable=!!session;return session}).catch(error=>{if(onlineSession)toast(error.message||"온라인 서버 연결에 실패했습니다.");else console.info("PIXELFRONT authority unavailable; using local engine",error);return null});
@@ -83,7 +84,7 @@ const runFrame=()=>{b.step();e.step();for(const nation of e.nations)if(nation.sp
 const resumed=restoreGame(e,savedData);e.renderMission?.();
 r.draw();
 $("#mapLoading").classList.add("hidden");if(!resumed)$("#spawnPanel").classList.remove("hidden");
-if(resumed){$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(runFrame,RULES.tickMs)}
+if(resumed){focusPlayerSpawn();r.visionTick=-1;r.draw();$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(runFrame,RULES.tickMs)}
 const persistGame=()=>{if(e.running)saveGame(e,opts)};
 const idleSave=()=>{if(!e.running)return;const run=persistGame;if("requestIdleCallback"in window)requestIdleCallback(run,{timeout:2000});else setTimeout(run,0)};
 setInterval(idleSave,10000);
@@ -103,13 +104,13 @@ async function deploy(i){
   try{const session=await gameServerReady;if(!session){if(onlineSession)throw new Error("온라인 서버 세션을 찾을 수 없습니다.")}else{const result=await gameServer.spawn(i);applyAuthority(result.state)}}
   catch(error){if(onlineSession){toast(error.message||"서버가 시작 위치를 거부했습니다.");console.warn("PIXELFRONT spawn rejected",error);return}authorityAvailable=false;console.warn("PIXELFRONT spawn authority unavailable; continued locally",error)}
   if(e.nations[0].spawn<0&&!e.spawn(0,i)){toast("해안과 다른 국가에서 떨어진 땅을 선택하세요");return}
-  e.start();persistGame();if(onlineSession&&authorityAvailable)startAuthoritySync();r.visionTick=-1;r.visible.fill(0);r.draw();
+  e.start();persistGame();if(onlineSession&&authorityAvailable)startAuthoritySync();focusPlayerSpawn();r.visionTick=-1;r.visible.fill(0);r.draw();
   $("#spawnPanel").classList.add("hidden");
   ["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));
   queueUI.show();timeControls.show();ui();
   timer=setInterval(runFrame,RULES.tickMs)
 }
-if(onlineSession)gameServerReady.then(result=>{if(!result?.state)return;applyAuthority(result.state);e.running=true;startAuthoritySync();r.visionTick=-1;r.visible.fill(0);r.draw();$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(runFrame,RULES.tickMs)}).catch(error=>toast(error.message));
+if(onlineSession)gameServerReady.then(result=>{if(!result?.state)return;applyAuthority(result.state);e.running=true;startAuthoritySync();focusPlayerSpawn();r.visionTick=-1;r.visible.fill(0);r.draw();$("#spawnPanel").classList.add("hidden");["#hud","#leaderboard","#attackControl","#mapHelp"].forEach(x=>$(x).classList.remove("hidden"));queueUI.show();timeControls.show();ui();timer=setInterval(runFrame,RULES.tickMs)}).catch(error=>toast(error.message));
 
 function ui(){
   queueUI.update();
