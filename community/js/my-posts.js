@@ -1,5 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   onAuthStateChanged,
   signOut
@@ -26,7 +27,7 @@ window.goProfile = () => {
 };
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
+  if (!isVerifiedGoogleUser(user)) {
     location.href = "../index.html";
     return;
   }

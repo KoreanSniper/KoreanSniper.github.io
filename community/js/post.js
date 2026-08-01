@@ -8,11 +8,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { listenComments, addComment } from "./comment.js";
-import { likeComment, dislikeComment } from "./commentlike.js";
 import { reportComment } from "./reportcomment.js";
 import { deleteComment } from "./deletecomment.js";
 
-import { likePost, dislikePost } from "./like.js";
 import { reportPost } from "./report.js";
 import { deletePost } from "./delete.js";
 
@@ -116,14 +114,14 @@ async function renderComments(comments) {
     const likeButton = document.createElement("button");
     likeButton.className = "likeC";
     likeButton.type = "button";
-    likeButton.textContent = "좋아요";
-    likeButton.onclick = () => likeComment(c.id);
+    likeButton.textContent = "반응 점검 중";
+    likeButton.disabled = true;
 
     const dislikeButton = document.createElement("button");
     dislikeButton.className = "dislikeC";
     dislikeButton.type = "button";
     dislikeButton.textContent = "싫어요";
-    dislikeButton.onclick = () => dislikeComment(c.id);
+    dislikeButton.disabled = true;
 
     const reportButton = document.createElement("button");
     reportButton.className = "reportC";
@@ -165,8 +163,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const commentBtn = document.getElementById("commentBtn");
   const editBtn = document.getElementById("editBtn");
 
-  if (likeBtn) likeBtn.onclick = () => likePost(postId);
-  if (dislikeBtn) dislikeBtn.onclick = () => dislikePost(postId);
+  if (likeBtn) { likeBtn.disabled = true; likeBtn.textContent = "반응 기능 점검 중"; }
+  if (dislikeBtn) { dislikeBtn.disabled = true; dislikeBtn.textContent = "싫어요 (점검 중)"; }
   if (reportBtn) reportBtn.onclick = () => reportPost(postId);
   if (deleteBtn) deleteBtn.onclick = () => deletePost(postId);
   if (commentBtn) commentBtn.onclick = () => addComment(postId);

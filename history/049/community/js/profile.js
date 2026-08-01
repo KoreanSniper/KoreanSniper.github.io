@@ -1,6 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
-import { ADMIN_EMAIL, createNameWithBadge } from "./util.js";
+import { ADMIN_EMAIL, createNameWithBadge, isVerifiedGoogleUser } from "./util.js";
 import { getNicknameIssue, isAllowedNickname } from "../../nickname-policy.js";
 
 import {
@@ -33,7 +33,7 @@ window.goHome = () => {
 };
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
+  if (!isVerifiedGoogleUser(user)) {
     location.href = "./index.html";
     return;
   }
@@ -132,6 +132,7 @@ window.saveProfile = async () => {
 
   const user = auth.currentUser;
   if (!user) return;
+  if (name.length > 24 || status.length > 120) { alert("닉네임은 24자, 상태 메시지는 120자까지 입력할 수 있습니다."); return; }
 
   const profileInfo = { email: user.email, isAdmin: user.email === ADMIN_EMAIL };
   const nicknameIssue = getNicknameIssue(name, profileInfo);

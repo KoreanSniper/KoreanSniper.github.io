@@ -11,9 +11,10 @@
 
   if (!("serviceWorker" in navigator)) return;
   if (!window.isSecureContext || location.protocol === "file:") return;
-  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=6`;
+  const swSrc = `${currentScript?.dataset?.swSrc || "./sw.js"}?v=7`;
 
   window.addEventListener("load", () => {
+    navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.filter(registration => /^\/history\/\d{3}\//.test(new URL(registration.scope).pathname)).map(registration => registration.unregister()))).catch(() => {});
     navigator.serviceWorker.register(swSrc, { updateViaCache: "none" }).then((registration) => {
       registration.update().catch(() => {});
     }).catch(() => {});

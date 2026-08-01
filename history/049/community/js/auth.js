@@ -1,6 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
-import { ADMIN_EMAIL } from "./util.js";
+import { ADMIN_EMAIL, isVerifiedGoogleUser } from "./util.js";
 import { writeActivityLog } from "./activity-log.js";
 import {
   GoogleAuthProvider,
@@ -107,7 +107,7 @@ window.goWrite = () => {
 };
 
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
+  if (isVerifiedGoogleUser(user)) {
     await syncVerifiedUser(user);
     setButtonDisplay("loginBtn", false);
     setButtonDisplay("logoutBtn", true);

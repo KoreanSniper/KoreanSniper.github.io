@@ -1,5 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   doc, getDoc, setDoc, deleteDoc, increment
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -20,7 +21,7 @@ export async function likePost(postId) {
 
   try {
     const user = auth.currentUser;
-    if (!user) return alert("로그인 필요");
+    if (!isVerifiedGoogleUser(user)) return alert("Google 로그인이 필요합니다");
 
     const r = ref(postId, user.uid);
     const post = postRef(postId);
@@ -77,7 +78,7 @@ export async function dislikePost(postId) {
 
   try {
     const user = auth.currentUser;
-    if (!user) return alert("로그인 필요");
+    if (!isVerifiedGoogleUser(user)) return alert("Google 로그인이 필요합니다");
 
     const r = ref(postId, user.uid);
     const post = postRef(postId);

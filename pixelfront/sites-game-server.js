@@ -1,6 +1,6 @@
 import { auth } from "./auth/firebase.js";
 
-const API_BASE = globalThis.PIXELFRONT_API_BASE || localStorage.getItem("pixelfront-api-base") || "https://pixelfront-authority.seoul2linejh.workers.dev";
+const API_BASE = "https://pixelfront-authority.seoul2linejh.workers.dev";
 
 async function call(path, init = {}) {
   await auth.authStateReady?.();
@@ -10,7 +10,7 @@ async function call(path, init = {}) {
     ...init,
     headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(init.headers || {}) },
   });
-  const data = await response.json();
+  const text = await response.text();let data;try{data=text?JSON.parse(text):{}}catch{const error=new Error(`게임 서버가 잘못된 응답을 보냈습니다. (${response.status})`);error.status=response.status;error.code="INVALID_SERVER_RESPONSE";throw error}
   if (!response.ok) {
     const error = new Error(data.error || `게임 서버 오류 (${response.status})`);
     error.status = response.status;

@@ -1,6 +1,7 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
 import { writeActivityLog } from "./activity-log.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   collection,
   addDoc,
@@ -16,7 +17,8 @@ export async function addComment(postId) {
   const text = document.getElementById("comment").value;
 
   if (!text.trim()) return;
-  if (!auth.currentUser) return alert("로그인 필요");
+  if (!isVerifiedGoogleUser(auth.currentUser)) return alert("Google 로그인이 필요합니다");
+  if (text.length > 2000) return alert("댓글은 2,000자까지 작성할 수 있습니다");
 
   const comment = await addDoc(collection(db, "comments"), {
     postId,

@@ -1,12 +1,10 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
 import { writeActivityLog } from "./activity-log.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
-  addDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+  doc,
+  setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -15,24 +13,13 @@ export async function reportComment(commentId) {
     const user = auth.currentUser;
 
     // 🔥 로그인 체크
-    if (!user) {
+    if (!isVerifiedGoogleUser(user)) {
       alert("로그인이 필요합니다");
       return;
     }
 
     // 🔥 중복 신고 방지
-    const q = query(
-      collection(db, "comment_reports"),
-      where("commentId", "==", commentId),
-      where("uid", "==", user.uid)
-    );
-
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      alert("이미 신고한 댓글입니다");
-      return;
-    }
+    const reportRef=doc(db,"comment_reports",`${commentId}_${user.uid}`);
 
     // 🔥 신고 사유 입력
     const reason = prompt(
@@ -47,9 +34,10 @@ export async function reportComment(commentId) {
       alert("신고가 취소되었습니다");
       return;
     }
+    if (reason.trim().length > 500) { alert("신고 사유는 500자까지 입력할 수 있습니다"); return; }
 
     // 🔥 Firestore 저장
-    const report = await addDoc(collection(db, "comment_reports"), {
+    await setDoc(reportRef, {
       commentId,
       uid: user.uid,
       reason: reason.trim(),
@@ -57,12 +45,12 @@ export async function reportComment(commentId) {
       status: "pending",
       createdAt: serverTimestamp()
     });
-    await writeActivityLog("comment_reported", "comment", commentId, { reportId: report.id });
+    await writeActivityLog("comment_reported", "comment", commentId, { reportId: reportRef.id });
 
     alert("댓글 신고가 접수되었습니다");
 
   } catch (e) {
     console.error("COMMENT REPORT ERROR:", e);
-    alert("신고 중 오류 발생");
+    alert(e?.code === "permission-denied" ? "이미 신고했거나 신고 권한이 없습니다" : "신고 중 오류 발생");
   }
 }

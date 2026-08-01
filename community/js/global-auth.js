@@ -1,5 +1,6 @@
 import { auth } from "./firebase.js";
 import { writeActivityLog } from "./activity-log.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const header = document.querySelector(".site-header");
@@ -25,7 +26,7 @@ if (host) {
   provider.setCustomParameters({ prompt: "select_account" });
   const render = (user) => {
     host.replaceChildren();
-    if (user) {
+    if (isVerifiedGoogleUser(user)) {
       const name = document.createElement("span");
       name.className = "global-auth-name";
       name.textContent = user.displayName || "Google 계정";

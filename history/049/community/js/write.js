@@ -1,6 +1,7 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { auth, db } from "./firebase.js";
 import { writeActivityLog } from "./activity-log.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -38,12 +39,12 @@ window.writePost = async () => {
   const content = document.getElementById("content").value;
   const status = document.getElementById("status");
 
-  if (!currentUser) {
+  if (!isVerifiedGoogleUser(currentUser)) {
     status.innerText = "상단의 Google 로그인 버튼을 먼저 눌러주세요.";
     return;
   }
 
-  if (!title || !content) {
+  if (!title.trim() || !content.trim() || title.length > 120 || content.length > 10000) {
     status.innerText = "⚠️ 제목과 내용을 입력하세요";
     return;
   }

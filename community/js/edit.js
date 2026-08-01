@@ -1,6 +1,7 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
 import { writeActivityLog } from "./activity-log.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   doc,
   getDoc,
@@ -33,7 +34,7 @@ async function loadPost() {
 
     // 🔥 본인 확인
     const user = auth.currentUser;
-    if (!user || user.uid !== data.uid) {
+    if (!isVerifiedGoogleUser(user) || user.uid !== data.uid) {
       alert("수정 권한이 없습니다.");
       location.href = "index.html";
       return;
@@ -57,7 +58,7 @@ window.updatePost = async () => {
   const content = document.getElementById("content").value.trim();
   const status = document.getElementById("status");
 
-  if (!title || !content) {
+  if (!title || !content || title.length > 120 || content.length > 10000) {
     status.innerText = "제목과 내용을 입력하세요";
     return;
   }

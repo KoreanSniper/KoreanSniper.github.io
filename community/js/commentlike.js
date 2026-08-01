@@ -1,5 +1,6 @@
 ﻿console.warn("[BlockRail] 경고: 이곳에 코드를 넣지 마십시오. 보안에 큰 위험이 있을수 있습니다.");
 import { db, auth } from "./firebase.js";
+import { isVerifiedGoogleUser } from "./util.js";
 import {
   doc,
   getDoc,
@@ -31,7 +32,7 @@ function lockKey(type, commentId) {
 // ======================
 export async function likeComment(commentId) {
   const user = auth.currentUser;
-  if (!user) return alert("로그인 필요");
+  if (!isVerifiedGoogleUser(user)) return alert("Google 로그인이 필요합니다");
 
   const key = lockKey("like", commentId);
 
@@ -107,7 +108,7 @@ export async function likeComment(commentId) {
 // ======================
 export async function dislikeComment(commentId) {
   const user = auth.currentUser;
-  if (!user) return alert("로그인 필요");
+  if (!isVerifiedGoogleUser(user)) return alert("Google 로그인이 필요합니다");
 
   const key = lockKey("dislike", commentId);
 

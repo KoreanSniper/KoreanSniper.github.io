@@ -45,6 +45,7 @@ online.querySelector("h2").style.cssText = "font-size:11px;letter-spacing:.15em"
 online.querySelector(".online-actions").style.cssText = "display:grid;grid-template-columns:1fr 1fr 70px;gap:6px";
 online.querySelector("input").style.cssText = "min-width:0;text-transform:uppercase";
 form.after(online);
+online.querySelectorAll("button,input").forEach(control=>control.disabled=true);online.querySelector(".online-status").textContent="보안 구조 개선 중에는 온라인 방 기능을 잠시 사용할 수 없습니다.";
 
 const status = online.querySelector(".online-status"), view = online.querySelector(".room-view"), codeEl = online.querySelector(".room-code"), playersEl = online.querySelector(".room-players"), start = online.querySelector("[data-start]");
 let session = null, unsubscribe = null;
@@ -54,7 +55,7 @@ function connect(result) {
   session = result; unsubscribe?.(); view.classList.remove("hidden"); codeEl.textContent = `ROOM ${result.code}`;
   unsubscribe = watchFirebaseRoom(result.code, room => {
     if (!room) { message("방이 종료되었습니다.", true); view.classList.add("hidden"); return; }
-    playersEl.innerHTML = (room.players || []).map(p => `<li>${p.host ? "◆ " : ""}${p.name}</li>`).join("");
+    const playerItems=(room.players||[]).map(player=>{const item=document.createElement("li");item.textContent=`${player.host?"◆ ":""}${String(player.name||"플레이어").slice(0,14)}`;return item});playersEl.replaceChildren(...playerItems);
     start.classList.toggle("hidden", room.hostId !== session.uid);
     if (room.status === "starting" && room.serverSessionId) {
       const q = new URLSearchParams({ session:room.serverSessionId, room:room.code, seed:String(room.seed), map:room.settings?.map || "world", ai:room.settings?.ai || "8", difficulty:room.settings?.difficulty || "normal", name:String((room.players || []).find(p => p.uid === session.uid)?.name || "플레이어") });
