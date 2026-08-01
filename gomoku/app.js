@@ -37,6 +37,7 @@ const AI_SEAT = "O";
 const GUEST_KEY = "gomoku.guestId";
 const NAME_KEY = "gomoku.displayName";
 const AI_DIFFICULTY_KEY = "gomoku.aiDifficulty";
+const AI_MATCH_KEY = "gomoku.aiMatch.v1";
 const DEBUG = false;
 const MOVE_TILE_SPAWN_INTERVAL = 5;
 const BOMB_TILE_SPAWN_INTERVAL = 20;
@@ -310,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
   void ensureFirebase();
   subscribeLobbyRooms();
   ensureAiTicker();
-  startLocalAIMatch("오목 전장을 불러오는 중입니다.");
+  restoreLocalAIMatch("오목 전장을 불러오는 중입니다.");
 });
 
 function makeStone(owner) {
@@ -492,6 +493,39 @@ function normalizeState(raw) {
   state.pendingMovePush = state.pendingMovePush || null;
   state.railgunUsesLeft = typeof state.railgunUsesLeft === "number" ? state.railgunUsesLeft : RAILGUN_LIMIT;
   return state;
+}
+
+function persistLocalAIMatch() {
+  if (session.mode !== "ai") return;
+  try {
+    localStorage.setItem(AI_MATCH_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      state: gameState,
+    }));
+  } catch (error) {
+    console.warn("AI 대전 저장에 실패했습니다.", error);
+  }
+}
+
+function restoreLocalAIMatch(message = "AI 대전을 이어서 시작합니다.") {
+  stopOnlineSession();
+  stopAiTimer();
+  session.mode = "ai";
+  session.notice = message;
+  try {
+    const saved = JSON.parse(localStorage.getItem(AI_MATCH_KEY) || "null");
+    if (saved?.state && Array.isArray(saved.state.board) && saved.state.board.length === BOARD_CELLS) {
+      gameState = normalizeState(saved.state);
+      session.notice = gameState.gameOver ? "저장된 AI 대전 결과를 불러왔습니다." : "진행 중이던 AI 대전을 이어갑니다.";
+    } else {
+      gameState = createInitialState();
+    }
+  } catch (error) {
+    console.warn("저장된 AI 대전을 불러오지 못했습니다.", error);
+    localStorage.removeItem(AI_MATCH_KEY);
+    gameState = createInitialState();
+  }
+  renderAll();
 }
 
 function signedIn() {
@@ -739,7 +773,7 @@ async function goHome() {
   } else {
     stopOnlineSession();
   }
-  gameState = createInitialState();
+  persistLocalAIMatch();
   session.mode = "idle";
   window.location.href = "../minigame/index.html";
 }
@@ -2110,6 +2144,7 @@ function startLocalAIMatch(message = "AI 대전 준비 완료") {
   session.mode = "ai";
   session.notice = message;
   gameState = createInitialState();
+  localStorage.removeItem(AI_MATCH_KEY);
   renderAll();
   scheduleAiTurn();
 }
@@ -2929,6 +2964,7 @@ function renderAll() {
   renderBoard();
   renderModeHelp();
   renderSpecialControls();
+  persistLocalAIMatch();
   if (session.mode === "ai" && !gameState.gameOver && gameState.currentPlayer === AI_SEAT && !session.aiTimer) {
     scheduleAiTurn();
   }
