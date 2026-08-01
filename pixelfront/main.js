@@ -7,7 +7,7 @@ import{Renderer,short}from"./renderer.js";
 import"./visibility.js";
 import{installDiplomacy}from"./diplomacy.js?v=4";
 import{installQueueUI}from"./queue-ui.js?v=2";
-import{installNaval}from"./naval.js?v=3";
+import{installNaval}from"./naval.js?v=4";
 import{installTerrainVisual}from"./terrain-visual.js";
 import{installBuildings}from"./buildings.js";
 import{installStrategicCities,updateCityUI}from"./objectives.js";
