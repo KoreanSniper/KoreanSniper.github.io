@@ -12,9 +12,10 @@ export function installNaval(){
   if(Engine.prototype.launchNaval)return;
   const oldStep=Engine.prototype.step,oldBegin=Engine.prototype.begin,oldDraw=Renderer.prototype.draw;
   Engine.prototype.ensureNaval=function(){this.navalMissions??=[]};
+  Engine.prototype.resolveNavalTarget=function(attacker,clicked){const direct=this.owner[clicked];if(direct>=0&&direct!==attacker)return{defender:direct,tile:clicked};let best=null;for(const nation of this.nations){if(nation.id===attacker||!nation.alive||!nation.tiles.size||this.relation?.(attacker,nation.id)>0)continue;const candidates=[...(nation.borderTiles||nation.tiles)].filter(tile=>coastal(this,tile)),target=closest(this,candidates.length?candidates:nation.tiles,clicked);if(target.tile>=0&&(!best||target.distance<best.distance))best={defender:nation.id,tile:target.tile,distance:target.distance}}return best};
   Engine.prototype.hasNavalReserve=function(attacker,defender){this.ensureNaval();return this.navalMissions.some(m=>m.attacker===attacker&&m.defender===defender&&m.state==="ready")};
   Engine.prototype.launchNaval=function(attacker,clicked,percent){
-    this.ensureNaval();const defender=this.owner[clicked],nation=this.nations[attacker];
+    this.ensureNaval();const resolved=this.resolveNavalTarget(attacker,clicked),defender=resolved?.defender,nation=this.nations[attacker];clicked=resolved?.tile??clicked;
     if(!nation?.alive||defender<0||defender===attacker||this.relation?.(attacker,defender)>0)return{ok:false,message:"해상 공격할 수 없는 국가입니다"};
     const crossings=riverCrossings(this,attacker,defender);
     if(crossings.length){
