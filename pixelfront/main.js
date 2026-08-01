@@ -6,7 +6,7 @@ import{Bots}from"./ai.js";
 import{Renderer,short}from"./renderer.js";
 import"./visibility.js";
 import{installDiplomacy}from"./diplomacy.js?v=2";
-import{installQueueUI}from"./queue-ui.js";
+import{installQueueUI}from"./queue-ui.js?v=2";
 import{installNaval}from"./naval.js";
 import{installTerrainVisual}from"./terrain-visual.js";
 import{installBuildings}from"./buildings.js";
