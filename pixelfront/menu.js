@@ -1,4 +1,4 @@
-import { hasSavedGame, readGame } from "./save-system.js?v=3";
+import { hasSavedGame, readGame } from "./save-system.js?v=4";
 import { createFirebaseRoom, joinFirebaseRoom, watchFirebaseRoom, startFirebaseRoom, leaveFirebaseRoom, cleanCode } from "./firebase-online.js";
 
 const form = document.querySelector("#gameForm");
