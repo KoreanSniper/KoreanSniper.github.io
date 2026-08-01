@@ -12,11 +12,11 @@ export function installNaval(){
   if(Engine.prototype.launchNaval)return;
   const oldStep=Engine.prototype.step,oldBegin=Engine.prototype.begin,oldDraw=Renderer.prototype.draw;
   Engine.prototype.ensureNaval=function(){this.navalMissions??=[]};
-  Engine.prototype.resolveNavalTarget=function(attacker,clicked){const direct=this.owner[clicked];if(direct>=0&&direct!==attacker)return{defender:direct,tile:clicked};let best=null;for(const nation of this.nations){if(nation.id===attacker||!nation.alive||!nation.tiles.size||this.relation?.(attacker,nation.id)>0)continue;const candidates=[...(nation.borderTiles||nation.tiles)].filter(tile=>coastal(this,tile)),target=closest(this,candidates.length?candidates:nation.tiles,clicked);if(target.tile>=0&&(!best||target.distance<best.distance))best={defender:nation.id,tile:target.tile,distance:target.distance}}return best};
+  Engine.prototype.resolveNavalTarget=function(attacker,clicked){const direct=this.owner[clicked];if(direct===-1||direct>=0&&direct!==attacker)return{defender:direct,tile:clicked};let best=null;for(const nation of this.nations){if(nation.id===attacker||!nation.alive||!nation.tiles.size||this.relation?.(attacker,nation.id)>0)continue;const candidates=[...(nation.borderTiles||nation.tiles)].filter(tile=>coastal(this,tile)),target=closest(this,candidates.length?candidates:nation.tiles,clicked);if(target.tile>=0&&(!best||target.distance<best.distance))best={defender:nation.id,tile:target.tile,distance:target.distance}}return best};
   Engine.prototype.hasNavalReserve=function(attacker,defender){this.ensureNaval();return this.navalMissions.some(m=>m.attacker===attacker&&m.defender===defender&&m.state==="ready")};
   Engine.prototype.launchNaval=function(attacker,clicked,percent){
     this.ensureNaval();const resolved=this.resolveNavalTarget(attacker,clicked),defender=resolved?.defender,nation=this.nations[attacker];clicked=resolved?.tile??clicked;
-    if(!nation?.alive||defender<0||defender===attacker||this.relation?.(attacker,defender)>0)return{ok:false,message:"해상 공격할 수 없는 국가입니다"};
+    if(!nation?.alive||defender==null||defender===-2||defender===attacker||defender>=0&&this.relation?.(attacker,defender)>0)return{ok:false,message:"해상 공격할 수 없는 영토입니다"};
     const crossings=riverCrossings(this,attacker,defender);
     if(crossings.length){
       const[tx,ty]=this.xy(clicked);crossings.sort((a,b)=>{const[x,y]=this.xy(a.to),[u,v]=this.xy(b.to);return(x-tx)**2+(y-ty)**2-((u-tx)**2+(v-ty)**2)});
@@ -26,7 +26,7 @@ export function installNaval(){
       mission={id:`crossing-${this.tick}-${this.navalMissions.length}`,attacker,defender,start:point.from,target:point.to,clicked,troops:amount,troopQueue:[amount],state:"sailing",started:this.tick,travelTicks:Math.max(4,Math.ceil(1200/RULES.tickMs)),progress:0,isCrossing:true};
       this.navalMissions.push(mission);return{ok:true,message:`도하 준비 · ${short(amount)}명`}
     }
-    const targetCoasts=[...(this.nations[defender].borderTiles||this.nations[defender].tiles)].filter(t=>coastal(this,t));
+    const targetTiles=defender>=0?[...(this.nations[defender].borderTiles||this.nations[defender].tiles)]:Array.from(this.owner,(owner,tile)=>owner===-1?tile:-1).filter(tile=>tile>=0),targetCoasts=targetTiles.filter(t=>coastal(this,t));
     const myCoasts=[...(nation.borderTiles||nation.tiles)].filter(t=>coastal(this,t));
     if(!targetCoasts.length||!myCoasts.length)return{ok:false,message:"출발 또는 목표 해안이 없습니다"};
     const target=closest(this,targetCoasts,clicked).tile,startInfo=closest(this,myCoasts,target),amount=Math.floor(nation.troops*Math.max(.05,Math.min(.9,percent/100)));
@@ -42,9 +42,9 @@ export function installNaval(){
   Engine.prototype.begin=function(c){
     if(c.type==="attack"){this.ensureNaval();const target=c.targetOwner,mission=this.navalMissions.find(m=>m.attacker===c.playerId&&m.defender===target&&m.state==="ready");if(mission){
       const nation=this.nations[c.playerId],extra=Math.floor(nation.troops*Math.max(.05,Math.min(.9,c.percent/100)));if(extra>=30)nation.troops-=extra;
-      const power=mission.troops+(extra>=30?extra:0),landing=mission.isCrossing?mission.target:(this.owner[mission.target]===target?mission.target:closest(this,[...(this.nations[target].borderTiles||this.nations[target].tiles)].filter(t=>coastal(this,t)),mission.target).tile);
-      if(landing<0)return;const defender=this.nations[target],cost=Math.max(12,Math.ceil(defender.troops/Math.max(1,defender.tiles.size)));
-      if(power<=cost)return;defender.troops=Math.max(0,defender.troops-cost);this.transfer(landing,c.playerId);
+      const power=mission.troops+(extra>=30?extra:0),fallbackTiles=target>=0?[...(this.nations[target].borderTiles||this.nations[target].tiles)].filter(t=>coastal(this,t)):Array.from(this.owner,(owner,tile)=>owner===-1&&coastal(this,tile)?tile:-1).filter(tile=>tile>=0),landing=mission.isCrossing?mission.target:(this.owner[mission.target]===target?mission.target:closest(this,fallbackTiles,mission.target).tile);
+      if(landing<0)return;const defender=target>=0?this.nations[target]:null,cost=defender?Math.max(12,Math.ceil(defender.troops/Math.max(1,defender.tiles.size))):RULES.neutralCost;
+      if(power<=cost)return;if(defender)defender.troops=Math.max(0,defender.troops-cost);this.transfer(landing,c.playerId);
       this.attacks.push({id:`landing-${this.tick}-${this.attacks.length}`,attacker:c.playerId,defender:target,target:landing,committed:power,power:power-cost,front:new Set([landing]),captured:1,alive:true,isNaval:true,isCrossing:!!mission.isCrossing,reinforcementQueue:[],queuedTroops:0});
       mission.state="landed";mission.troops=0;mission.troopQueue=[];return
     }}oldBegin.call(this,c)
