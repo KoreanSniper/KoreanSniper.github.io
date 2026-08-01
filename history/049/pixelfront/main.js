@@ -36,9 +36,9 @@ let authorityAvailable=false;
 const gameServerReady=(onlineSession?gameServer.join(onlineSession):gameServer.create({seed:selectedSeed,mapType:opts.mapType,name:opts.name,aiCount:opts.aiCount,difficulty:opts.difficulty})).then(session=>{authorityAvailable=!!session;return session}).catch(error=>{if(onlineSession)toast(error.message||"온라인 서버 연결에 실패했습니다.");else console.info("PIXELFRONT authority unavailable; using local engine",error);return null});
 const issueLocal=e.issue.bind(e);
 let authoritySync=null,syncBusy=false;
-function applyAuthority(state){
+function applyAuthority(state,applyOwner=true){
   if(!state?.nations)return;
-  if(state.ownerSnapshot){
+  if(applyOwner&&state.ownerSnapshot){
     const owner=decodeOwnerSnapshot(state.ownerSnapshot,e.owner.length);e.changedTiles??=new Set;
     for(let i=0;i<owner.length;i++)if(owner[i]!==-3&&e.owner[i]!==owner[i]){e.transfer(i,owner[i]);e.changedTiles.add(i)}
     r.visionTick=-1
@@ -54,7 +54,7 @@ let authorityFailures=0;
 const pendingCommands=new Set();
 const isAuthorityOutage=error=>!error?.status||error.status>=500;
 const authorityMessage=error=>error?.code==="TARGET_NOT_VISIBLE"?"서버 시야에서 아직 확인되지 않은 목표입니다. 잠시 후 다시 시도하세요.":error?.code==="INVALID_TARGET"?"현재 공격할 수 없는 목표입니다.":error?.message||"서버가 명령을 거부했습니다.";
-async function syncAuthority(){if(syncBusy||!authorityAvailable||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(false)).state);authorityFailures=0;ui();r.draw()}catch(error){const payloadTooBig=error?.code==="SQLITE_TOOBIG"||/SQLITE_TOOBIG|string or blob too big/i.test(error?.message||"");if(payloadTooBig){authorityFailures=0;console.info("PIXELFRONT full snapshot unavailable; lightweight sync retained")}else{authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;clearInterval(authoritySync);authoritySync=null;console.warn("PIXELFRONT authority disabled after repeated sync failures",error)}else if(authorityFailures===1)console.warn("PIXELFRONT sync failed",error)}}finally{syncBusy=false}}
+async function syncAuthority(){if(syncBusy||!authorityAvailable||!gameServer.sessionId)return;syncBusy=true;try{applyAuthority((await gameServer.state(false)).state,false);authorityFailures=0;ui();r.draw()}catch(error){const payloadTooBig=error?.code==="SQLITE_TOOBIG"||/SQLITE_TOOBIG|string or blob too big/i.test(error?.message||"");if(payloadTooBig){authorityFailures=0;console.info("PIXELFRONT full snapshot unavailable; lightweight sync retained")}else{authorityFailures++;if(!onlineSession&&authorityFailures>=2){authorityAvailable=false;clearInterval(authoritySync);authoritySync=null;console.warn("PIXELFRONT authority disabled after repeated sync failures",error)}else if(authorityFailures===1)console.warn("PIXELFRONT sync failed",error)}}finally{syncBusy=false}}
 function startAuthoritySync(){if(!authoritySync)authoritySync=setInterval(syncAuthority,500)}
 e.issue=command=>{if(command.playerId!==0)return authorityAvailable?false:issueLocal(command);const key=`${command.type}:${command.targetOwner??command.target??""}`;if(pendingCommands.has(key))return false;pendingCommands.add(key);gameServerReady.then(session=>{if(!session){if(!onlineSession)return issueLocal(command);throw new Error("SERVER_UNAVAILABLE")}return gameServer.command(command).then(result=>{applyAuthority(result.state);if(command.type==="attack"){e.attacks=e.attacks.filter(attack=>attack.attacker!==0||attack.defender!==command.targetOwner);issueLocal(command)}ui();r.draw()})}).catch(error=>{if(!onlineSession&&isAuthorityOutage(error)){authorityAvailable=false;issueLocal(command);console.warn("PIXELFRONT command authority unavailable; continued locally",error)}else{toast(authorityMessage(error));if(error?.status===403)syncAuthority();else console.warn("PIXELFRONT command rejected",error)}}).finally(()=>pendingCommands.delete(key));return true};
 $("#seedLabel").textContent=`SEED ${e.map.seed>>>0}`;
