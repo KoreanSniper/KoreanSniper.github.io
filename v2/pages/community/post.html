@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>게시글 | BlockRail V2</title>
+  <link rel="stylesheet" href="../../css/site.css">
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="page-shell">
+    <section id="post" class="panel" aria-live="polite">
+      <p>게시글을 불러오는 중...</p>
+    </section>
+    <section id="comments" class="panel">
+      <h2>댓글</h2>
+      <p>댓글 기능은 다음 이식 단계에서 연결합니다.</p>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script type="module">
+    import { mountHeader } from "../../components/header.js";
+    import { mountFooter } from "../../components/footer.js";
+    import { getDocument, getUser } from "../../core/api/firestore.js";
+
+    mountHeader();
+    mountFooter();
+
+    const root = document.querySelector("#post");
+    const id = new URLSearchParams(location.search).get("id");
+
+    if (!id) {
+      root.textContent = "게시글 ID가 없습니다.";
+    } else {
+      try {
+        const snapshot = await getDocument("posts", id);
+        if (!snapshot.exists()) {
+          root.textContent = "게시글을 찾을 수 없습니다.";
+        } else {
+          const post = snapshot.data();
+          const user = await getUser(post.uid);
+          root.replaceChildren();
+
+          const title = document.createElement("h1");
+          title.textContent = post.title || "제목 없음";
+          const author = document.createElement("p");
+          author.textContent = `작성자: ${user?.username || user?.displayName || "User"}`;
+          const content = document.createElement("div");
+          content.className = "post-content";
+          content.textContent = post.content || "";
+          root.append(title, author, content);
+        }
+      } catch (error) {
+        console.error("V2 POST LOAD ERROR:", error);
+        root.textContent = "게시글을 불러오지 못했습니다.";
+      }
+    }
+  </script>
+</body>
+</html>
