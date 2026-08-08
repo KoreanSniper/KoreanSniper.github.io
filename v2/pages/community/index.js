@@ -40,6 +40,16 @@ async function renderPosts() {
     const user = await getCachedUser(post.uid);
     const article = document.createElement("article");
     article.className = "post-card";
+    article.tabIndex = 0;
+    article.addEventListener("click", () => {
+      location.href = `./post.html?id=${encodeURIComponent(post.id)}`;
+    });
+    article.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        location.href = `./post.html?id=${encodeURIComponent(post.id)}`;
+      }
+    });
 
     const title = document.createElement("h2");
     title.textContent = post.title || "제목 없음";
