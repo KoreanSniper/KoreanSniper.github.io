@@ -9,52 +9,77 @@
 <body>
   <div id="site-header"></div>
   <main class="page-shell">
-    <section id="post" class="panel" aria-live="polite">
-      <p>게시글을 불러오는 중...</p>
-    </section>
+    <section id="post" class="panel" aria-live="polite"><p>게시글을 불러오는 중...</p></section>
     <section id="comments" class="panel">
       <h2>댓글</h2>
-      <p>댓글 기능은 다음 이식 단계에서 연결합니다.</p>
+      <form id="comment-form">
+        <textarea id="comment" maxlength="2000" placeholder="댓글을 입력하세요" required></textarea>
+        <button type="submit">댓글 작성</button>
+      </form>
+      <div id="comment-list" aria-live="polite"><p>댓글을 불러오는 중...</p></div>
     </section>
   </main>
   <div id="site-footer"></div>
   <script type="module">
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { auth } from "../../core/firebase/app.js";
+    import { getDocument, getUser, listenComments, addComment, toggleCommentReaction } from "../../core/api/firestore.js";
     import { mountHeader } from "../../components/header.js";
     import { mountFooter } from "../../components/footer.js";
-    import { getDocument, getUser } from "../../core/api/firestore.js";
 
-    mountHeader();
-    mountFooter();
+    mountHeader(); mountFooter();
+    const postId = new URLSearchParams(location.search).get("id");
+    const postRoot = document.querySelector("#post");
+    const list = document.querySelector("#comment-list");
+    const form = document.querySelector("#comment-form");
+    const input = document.querySelector("#comment");
+    let comments = [];
 
-    const root = document.querySelector("#post");
-    const id = new URLSearchParams(location.search).get("id");
+    function button(label, handler) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label; b.addEventListener("click", handler); return b;
+    }
 
-    if (!id) {
-      root.textContent = "게시글 ID가 없습니다.";
-    } else {
-      try {
-        const snapshot = await getDocument("posts", id);
-        if (!snapshot.exists()) {
-          root.textContent = "게시글을 찾을 수 없습니다.";
-        } else {
-          const post = snapshot.data();
-          const user = await getUser(post.uid);
-          root.replaceChildren();
-
-          const title = document.createElement("h1");
-          title.textContent = post.title || "제목 없음";
-          const author = document.createElement("p");
-          author.textContent = `작성자: ${user?.username || user?.displayName || "User"}`;
-          const content = document.createElement("div");
-          content.className = "post-content";
-          content.textContent = post.content || "";
-          root.append(title, author, content);
-        }
-      } catch (error) {
-        console.error("V2 POST LOAD ERROR:", error);
-        root.textContent = "게시글을 불러오지 못했습니다.";
+    async function renderComments() {
+      list.replaceChildren();
+      if (!comments.length) { list.textContent = "아직 댓글이 없습니다."; return; }
+      for (const comment of comments) {
+        const card = document.createElement("article"); card.className = "comment-card";
+        const user = await getUser(comment.uid);
+        const author = document.createElement("strong"); author.textContent = user?.username || user?.displayName || "User";
+        const body = document.createElement("p"); body.textContent = comment.content || "";
+        const actions = document.createElement("div");
+        const like = button(`👍 ${comment.likes ?? 0}`, async () => {
+          try { await toggleCommentReaction(comment.id, auth.currentUser?.uid, "like"); } catch (e) { alert(e.message); }
+        });
+        const dislike = button(`👎 ${comment.dislikes ?? 0}`, async () => {
+          try { await toggleCommentReaction(comment.id, auth.currentUser?.uid, "dislike"); } catch (e) { alert(e.message); }
+        });
+        actions.append(like, dislike); card.append(author, body, actions); list.append(card);
       }
     }
+
+    async function loadPost() {
+      if (!postId) { postRoot.textContent = "게시글 ID가 없습니다."; return; }
+      const snapshot = await getDocument("posts", postId);
+      if (!snapshot.exists()) { postRoot.textContent = "게시글을 찾을 수 없습니다."; return; }
+      const post = snapshot.data(); const user = await getUser(post.uid); postRoot.replaceChildren();
+      const title = document.createElement("h1"); title.textContent = post.title || "제목 없음";
+      const author = document.createElement("p"); author.textContent = `작성자: ${user?.username || user?.displayName || "User"}`;
+      const content = document.createElement("div"); content.className = "post-content"; content.textContent = post.content || "";
+      postRoot.append(title, author, content);
+      listenComments(postId, async (next) => { comments = next; await renderComments(); });
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const user = auth.currentUser;
+      if (!user) { alert("Google 로그인이 필요합니다."); return; }
+      try { await addComment(postId, user, input.value); input.value = ""; }
+      catch (e) { alert(e.message || "댓글 작성에 실패했습니다."); }
+    });
+
+    onAuthStateChanged(auth, loadPost);
   </script>
 </body>
 </html>
