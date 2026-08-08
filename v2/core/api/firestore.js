@@ -29,4 +29,17 @@ export function deleteDocument(collectionName, id) {
   return deleteDoc(documentRef(collectionName, id));
 }
 
+export async function getPosts() {
+  const snapshot = await getDocs(
+    query(collectionRef("posts"), orderBy("createdAt", "desc")),
+  );
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function getUser(uid) {
+  if (!uid) return null;
+  const snapshot = await getDocument("users", uid);
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+}
+
 export { query, orderBy, limit };
