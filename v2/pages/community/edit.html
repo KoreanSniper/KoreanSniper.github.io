@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>글 수정 | BlockRail V2</title><link rel="stylesheet" href="../../css/site.css"></head>
+<body><div id="site-header"></div><main class="page-shell"><section class="panel"><h1>글 수정</h1><form id="form"><input id="title" maxlength="120" required><textarea id="content" maxlength="10000" required></textarea><button>저장</button><p id="status"></p></form></section></main><div id="site-footer"></div>
+<script type="module">
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth } from "../../core/firebase/app.js"; import { getDocument, updateDocument } from "../../core/api/firestore.js";
+import { mountHeader } from "../../components/header.js"; import { mountFooter } from "../../components/footer.js";
+mountHeader();mountFooter(); const id=new URLSearchParams(location.search).get('id'); const form=document.querySelector('#form'),status=document.querySelector('#status');
+async function load(u){if(!id){status.textContent='잘못된 접근';return;}const s=await getDocument('posts',id);if(!s.exists()){status.textContent='글이 없습니다.';return;}const p=s.data();if(!u||u.uid!==p.uid){status.textContent='수정 권한이 없습니다.';form.hidden=true;return;}document.querySelector('#title').value=p.title||'';document.querySelector('#content').value=p.content||'';}
+onAuthStateChanged(auth,load); form.addEventListener('submit',async e=>{e.preventDefault();try{const title=document.querySelector('#title').value.trim(),content=document.querySelector('#content').value.trim();if(!title||!content){status.textContent='제목과 내용을 입력하세요.';return;}await updateDocument('posts',id,{title,content,updatedAt:new Date()});location.href=`post.html?id=${id}`;}catch(err){console.error(err);status.textContent='수정에 실패했습니다.';}});
+</script></body></html>
