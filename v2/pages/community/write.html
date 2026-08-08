@@ -4,10 +4,10 @@
 <script type="module">
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { auth } from "../../core/firebase/app.js"; import { addDocument } from "../../core/api/firestore.js";
+import { auth } from "../../core/firebase/app.js"; import { addDocument, documentRef } from "../../core/api/firestore.js"; import { setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"; import { db } from "../../core/firebase/app.js";
 import { mountHeader } from "../../components/header.js"; import { mountFooter } from "../../components/footer.js";
 mountHeader(); mountFooter();
 const form=document.querySelector('#form'), status=document.querySelector('#status');
-form.addEventListener('submit',async e=>{e.preventDefault(); const u=auth.currentUser;if(!u){status.textContent='Google 로그인이 필요합니다.';return;}try{const ref=await addDocument('posts',{uid:u.uid,title:document.querySelector('#title').value.trim(),content:document.querySelector('#content').value.trim(),likes:0,dislikes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});location.href=`post.html?id=${ref.id}`;}catch(err){console.error(err);status.textContent='작성에 실패했습니다.';}});
-onAuthStateChanged(auth,u=>{if(!u) status.textContent='Google 로그인 후 작성할 수 있습니다.';});
+form.addEventListener('submit',async e=>{e.preventDefault();const u=auth.currentUser;if(!u){status.textContent='Google 로그인이 필요합니다.';return;}const title=document.querySelector('#title').value.trim(),content=document.querySelector('#content').value.trim();if(!title||!content){status.textContent='제목과 내용을 입력하세요.';return;}try{const ref=await addDocument('posts',{uid:u.uid,title,content,createdAt:serverTimestamp()});await setDoc(documentRef('rateLimits',`${u.uid}_post`),{uid:u.uid,kind:'post',lastAt:serverTimestamp()});location.href=`post.html?id=${ref.id}`;}catch(err){console.error(err);status.textContent='작성에 실패했습니다.';}});
+onAuthStateChanged(auth,u=>{if(!u)status.textContent='Google 로그인 후 작성할 수 있습니다.';});
 </script></body></html>
