@@ -12,7 +12,6 @@ export function mountHeader() {
       <a class="site-brand" href="${V2_ROOT}index.html">BlockRail V2</a>
       <nav class="site-nav" aria-label="주요 메뉴">
         <a href="${V2_ROOT}pages/community/index.html">커뮤니티</a>
-        <a href="${V2_ROOT}pages/arcade/index.html">아케이드</a>
       </nav>
       <div class="auth-area">
         <span id="auth-status">로그인 필요</span>
