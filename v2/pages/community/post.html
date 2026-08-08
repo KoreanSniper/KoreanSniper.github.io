@@ -1,85 +1,13 @@
 <!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>게시글 | BlockRail V2</title>
-  <link rel="stylesheet" href="../../css/site.css">
-</head>
-<body>
-  <div id="site-header"></div>
-  <main class="page-shell">
-    <section id="post" class="panel" aria-live="polite"><p>게시글을 불러오는 중...</p></section>
-    <section id="comments" class="panel">
-      <h2>댓글</h2>
-      <form id="comment-form">
-        <textarea id="comment" maxlength="2000" placeholder="댓글을 입력하세요" required></textarea>
-        <button type="submit">댓글 작성</button>
-      </form>
-      <div id="comment-list" aria-live="polite"><p>댓글을 불러오는 중...</p></div>
-    </section>
-  </main>
-  <div id="site-footer"></div>
-  <script type="module">
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { auth } from "../../core/firebase/app.js";
-    import { getDocument, getUser, listenComments, addComment, toggleCommentReaction } from "../../core/api/firestore.js";
-    import { mountHeader } from "../../components/header.js";
-    import { mountFooter } from "../../components/footer.js";
-
-    mountHeader(); mountFooter();
-    const postId = new URLSearchParams(location.search).get("id");
-    const postRoot = document.querySelector("#post");
-    const list = document.querySelector("#comment-list");
-    const form = document.querySelector("#comment-form");
-    const input = document.querySelector("#comment");
-    let comments = [];
-
-    function button(label, handler) {
-      const b = document.createElement("button");
-      b.type = "button"; b.textContent = label; b.addEventListener("click", handler); return b;
-    }
-
-    async function renderComments() {
-      list.replaceChildren();
-      if (!comments.length) { list.textContent = "아직 댓글이 없습니다."; return; }
-      for (const comment of comments) {
-        const card = document.createElement("article"); card.className = "comment-card";
-        const user = await getUser(comment.uid);
-        const author = document.createElement("strong"); author.textContent = user?.username || user?.displayName || "User";
-        const body = document.createElement("p"); body.textContent = comment.content || "";
-        const actions = document.createElement("div");
-        const like = button(`👍 ${comment.likes ?? 0}`, async () => {
-          try { await toggleCommentReaction(comment.id, auth.currentUser?.uid, "like"); } catch (e) { alert(e.message); }
-        });
-        const dislike = button(`👎 ${comment.dislikes ?? 0}`, async () => {
-          try { await toggleCommentReaction(comment.id, auth.currentUser?.uid, "dislike"); } catch (e) { alert(e.message); }
-        });
-        actions.append(like, dislike); card.append(author, body, actions); list.append(card);
-      }
-    }
-
-    async function loadPost() {
-      if (!postId) { postRoot.textContent = "게시글 ID가 없습니다."; return; }
-      const snapshot = await getDocument("posts", postId);
-      if (!snapshot.exists()) { postRoot.textContent = "게시글을 찾을 수 없습니다."; return; }
-      const post = snapshot.data(); const user = await getUser(post.uid); postRoot.replaceChildren();
-      const title = document.createElement("h1"); title.textContent = post.title || "제목 없음";
-      const author = document.createElement("p"); author.textContent = `작성자: ${user?.username || user?.displayName || "User"}`;
-      const content = document.createElement("div"); content.className = "post-content"; content.textContent = post.content || "";
-      postRoot.append(title, author, content);
-      listenComments(postId, async (next) => { comments = next; await renderComments(); });
-    }
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const user = auth.currentUser;
-      if (!user) { alert("Google 로그인이 필요합니다."); return; }
-      try { await addComment(postId, user, input.value); input.value = ""; }
-      catch (e) { alert(e.message || "댓글 작성에 실패했습니다."); }
-    });
-
-    onAuthStateChanged(auth, loadPost);
-  </script>
-</body>
-</html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>게시글 | BlockRail V2</title><link rel="stylesheet" href="../../css/site.css"></head>
+<body><div id="site-header"></div><main class="page-shell"><section id="post" class="panel"><p>게시글을 불러오는 중...</p></section><section id="comments" class="panel"><h2>댓글</h2><form id="comment-form"><textarea id="comment" maxlength="2000" placeholder="댓글을 입력하세요" required></textarea><button>댓글 작성</button></form><div id="comment-list"><p>댓글을 불러오는 중...</p></div></section></main><div id="site-footer"></div>
+<script type="module">
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'; import { auth } from '../../core/firebase/app.js';
+import { getDocument,getUser,listenComments,addComment,toggleCommentReaction } from '../../core/api/firestore.js'; import { deletePost,togglePostReaction,reportPost } from '../../core/api/community.js';
+import { mountHeader } from '../../components/header.js'; import { mountFooter } from '../../components/footer.js'; mountHeader();mountFooter();
+const id=new URLSearchParams(location.search).get('id'), root=document.querySelector('#post'), list=document.querySelector('#comment-list'),form=document.querySelector('#comment-form'),input=document.querySelector('#comment');let post;
+const btn=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=fn;return b;};
+async function renderComments(cs){list.replaceChildren();if(!cs.length){list.textContent='아직 댓글이 없습니다.';return;}for(const c of cs){const card=document.createElement('article');card.className='comment-card';const u=await getUser(c.uid);const name=document.createElement('strong');name.textContent=u?.username||u?.displayName||'User';const body=document.createElement('p');body.textContent=c.content||'';const actions=document.createElement('div');actions.append(btn(`👍 ${c.likes||0}`,async()=>{try{await toggleCommentReaction(c.id,auth.currentUser?.uid,'like')}catch(e){alert(e.message)}}),btn(`👎 ${c.dislikes||0}`,async()=>{try{await toggleCommentReaction(c.id,auth.currentUser?.uid,'dislike')}catch(e){alert(e.message)}}));card.append(name,body,actions);list.append(card);}}
+async function load(){if(!id){root.textContent='게시글 ID가 없습니다.';return;}const s=await getDocument('posts',id);if(!s.exists()){root.textContent='게시글을 찾을 수 없습니다.';return;}post=s.data();const u=await getUser(post.uid);root.replaceChildren();const title=document.createElement('h1');title.textContent=post.title||'제목 없음';const author=document.createElement('p');author.textContent=`작성자: ${u?.username||u?.displayName||'User'}`;const content=document.createElement('div');content.textContent=post.content||'';const actions=document.createElement('div');actions.append(btn(`👍 ${post.likes||0}`,async()=>{try{await togglePostReaction(id,'like');load()}catch(e){alert(e.message)}}),btn(`👎 ${post.dislikes||0}`,async()=>{try{await togglePostReaction(id,'dislike');load()}catch(e){alert(e.message)}}),btn('신고',async()=>{const r=prompt('신고 사유를 입력하세요');if(r)try{await reportPost(id,r);alert('신고가 접수되었습니다.')}catch(e){alert(e.message)}}));if(auth.currentUser?.uid===post.uid){actions.append(btn('수정',()=>location.href=`edit.html?id=${id}`),btn('삭제',async()=>{if(confirm('게시글을 삭제할까요?'))try{await deletePost(id);location.href='index.html'}catch(e){alert(e.message)}}));}root.append(title,author,content,actions);listenComments(id,renderComments);}
+form.onsubmit=async e=>{e.preventDefault();if(!auth.currentUser){alert('Google 로그인이 필요합니다.');return;}try{await addComment(id,auth.currentUser,input.value);input.value=''}catch(e){alert(e.message)}};onAuthStateChanged(auth,load);
+</script></body></html>
